@@ -1,11 +1,11 @@
 module argocd-hydrate
 
-go 1.23.3
+go 1.21
 
 require (
 	github.com/spf13/cobra v1.8.0
 	gopkg.in/yaml.v3 v3.0.1
-	helm.sh/helm/v3 v3.15.4
+	helm.sh/helm/v3 v3.14.0
 )
 
 require (
