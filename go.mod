@@ -1,6 +1,8 @@
-module argocd-hydrate
+module github.com/kazysgurskas/argocd-hydrate
 
-go 1.21
+go 1.23.0
+
+toolchain go1.23.3
 
 require (
 	github.com/spf13/cobra v1.8.0
