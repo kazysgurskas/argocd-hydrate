@@ -1,31 +1,49 @@
----
 project_name: argocd-hydrate
-
-before:
-  hooks:
-    - go mod tidy
 
 builds:
   - env:
       - CGO_ENABLED=0
     goos:
       - linux
-      - windows
       - darwin
+      - windows
     goarch:
       - amd64
       - arm64
     ldflags:
-      - -s -w -X main.version={{.Version}} -X main.commit={{.Commit}} -X main.date={{.Date}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.Version={{.Env.VERSION}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.GitCommit={{.Env.GIT_COMMIT}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.BuildDate={{.Env.BUILD_DATE}}
     main: ./cmd/argocd-hydrate/main.go
+
+dockers:
+  - image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:latest"
+    build_flag_templates:
+      - "--build-arg=VERSION={{.Env.VERSION}}"
+      - "--build-arg=GIT_COMMIT={{.Env.GIT_COMMIT}}"
+      - "--build-arg=BUILD_DATE={{.Env.BUILD_DATE}}"
+    dockerfile: Dockerfile
 
 archives:
   - format: tar.gz
-    name_template: "{{ .ProjectName }}-v{{ .Version }}-{{ .Os }}-{{ .Arch }}"
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- title .Os }}_
+      {{- if eq .Arch "amd64" }}x86_64
+      {{- else if eq .Arch "386" }}i386
+      {{- else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
 
 checksum:
-  name_template: "{{ .ProjectName }}-v{{ .Version }}-checksums.txt"
-  algorithm: sha256
+  name_template: 'checksums.txt'
+
+snapshot:
+  name_template: "{{ .Tag }}-next"
 
 changelog:
   sort: asc
@@ -33,28 +51,3 @@ changelog:
     exclude:
       - '^docs:'
       - '^test:'
-      - '^ci:'
-      - Merge pull request
-      - Merge branch
-
-release:
-  github:
-    owner: kazysgurskas
-    name: argocd-hydrate
-  prerelease: auto
-  draft: false
-
-dockers:
-  - image_templates:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .ProjectName }}:{{ .Version }}"
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/{{ .ProjectName }}:latest"
-    use: buildx
-    dockerfile: Dockerfile
-    extra_files:
-      - "./"
-    build_flag_templates:
-      - "--pull"
-      - "--label=org.opencontainers.image.created={{.Date}}"
-      - "--label=org.opencontainers.image.title={{.ProjectName}}"
-      - "--label=org.opencontainers.image.revision={{.FullCommit}}"
-      - "--label=org.opencontainers.image.version={{.Version}}"
