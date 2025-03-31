@@ -2,6 +2,7 @@ package util
 
 import (
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v3"
 )
@@ -33,4 +34,26 @@ func MergeMaps(dest, src map[string]interface{}) {
 		}
 		dest[k] = v
 	}
+}
+
+// SanitizeFileName makes sure a string is valid as a filename
+func SanitizeFileName(name string) string {
+	// Replace characters that might not be valid in filenames
+	name = strings.ReplaceAll(name, ":", "-")
+	name = strings.ReplaceAll(name, "/", "-")
+	name = strings.ReplaceAll(name, "\\", "-")
+	name = strings.ReplaceAll(name, ".", "-")
+	name = strings.ReplaceAll(name, " ", "-")
+	return name
+}
+
+// GetNestedString safely extracts a string value from a nested map
+func GetNestedString(obj map[string]interface{}, key string) (string, bool) {
+	val, ok := obj[key]
+	if !ok {
+		return "", false
+	}
+
+	str, ok := val.(string)
+	return str, ok
 }
