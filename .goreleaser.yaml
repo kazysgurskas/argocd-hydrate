@@ -17,13 +17,28 @@ builds:
     main: ./cmd/argocd-hydrate/main.go
 
 dockers:
-  - image_templates:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}"
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:latest"
+  - id: fireactions-amd64
+    use: buildx
+    extra_files:
+      - "./"
     build_flag_templates:
-      - "--build-arg=VERSION={{.Env.VERSION}}"
-      - "--build-arg=GIT_COMMIT={{.Env.GIT_COMMIT}}"
-      - "--build-arg=BUILD_DATE={{.Env.BUILD_DATE}}"
+      - "--pull"
+      - "--platform=linux/amd64"
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}"-amd64
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:latest"
+    dockerfile: Dockerfile
+  - id: argocd-hydrate-arm64
+    use: buildx
+    extra_files:
+      - "./"
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+    goarch: amd64
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}"-arm64
     dockerfile: Dockerfile
 
 archives:
