@@ -26,7 +26,7 @@ dockers:
       - "--platform=linux/amd64"
     goarch: amd64
     image_templates:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}"-amd64
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}-amd64"
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:latest"
     dockerfile: Dockerfile
   - id: argocd-hydrate-arm64
