@@ -12,7 +12,7 @@ import (
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/types"
+	"github.com/kazysgurskas/argocd-hydrate/internal/config"
 	"github.com/kazysgurskas/argocd-hydrate/pkg/util"
 )
 
@@ -36,8 +36,10 @@ func isOCIURL(url string) bool {
 
 // PullChart pulls a Helm chart from a repository using Helm Go packages
 func PullChart(url, chartName, version string) (string, error) {
+	config := config.GetConfig()
+
 	// Use the configured charts directory instead of hardcoded value
-	chartsDir := types.Config.ChartsDir
+	chartsDir := config.ChartsDir
 
 	// Ensure the base charts directory exists
 	if err := os.MkdirAll(chartsDir, 0755); err != nil {

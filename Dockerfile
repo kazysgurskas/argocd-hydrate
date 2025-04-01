@@ -8,11 +8,11 @@ RUN apk add --no-cache git
 
 WORKDIR /app
 
-COPY go.mod ./
+COPY go.mod ./app
 
 RUN go mod download
 
-COPY . .
+COPY . ./app
 
 RUN CGO_ENABLED=0 GOOS=linux go build \
     -a -installsuffix cgo \
