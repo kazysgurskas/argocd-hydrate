@@ -5,7 +5,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/types"
+	"github.com/kazysgurskas/argocd-hydrate/internal/config"
 )
 
 // getVersion returns the version information filled by LDFLAGS during build
@@ -27,6 +27,8 @@ func getVersion() struct {
 
 // New creates a new root command for the argocd-hydrate CLI
 func New() *cobra.Command {
+	config := config.GetConfig()
+
 	cmd := &cobra.Command{
 		Use:   "argocd-hydrate",
 		Short: "Hydrate ArgoCD applications into Kubernetes manifests",
@@ -38,11 +40,11 @@ and directory-based sources.`,
 	}
 
 	// Define flags
-	cmd.PersistentFlags().StringVar(&types.Config.ApplicationsFile, "applications", types.Config.ApplicationsFile,
+	cmd.PersistentFlags().StringVar(&config.ApplicationsFile, "applications", "default",
 		"Path to the file containing ArgoCD Application CRDs")
-	cmd.PersistentFlags().StringVar(&types.Config.OutputDir, "output", types.Config.OutputDir,
+	cmd.PersistentFlags().StringVar(&config.OutputDir, "output", "default",
 		"Output directory for the rendered manifests")
-	cmd.PersistentFlags().StringVar(&types.Config.ChartsDir, "charts-dir", types.Config.ChartsDir,
+	cmd.PersistentFlags().StringVar(&config.ChartsDir, "charts-dir", "default",
 		"Directory for storing downloaded Helm charts")
 
 	// Add examples

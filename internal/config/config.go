@@ -1,4 +1,4 @@
-package types
+package config
 
 // Configuration holds all application configuration
 type Configuration struct {
@@ -12,12 +12,11 @@ type Configuration struct {
 	ChartsDir string
 }
 
-// Global configuration instance
-var (
-	// Config holds the current configuration
-	Config = Configuration{
+// DefaultConfig returns the current configuration with default values
+func GetConfig() *Configuration {
+	return &Configuration{
 		ApplicationsFile: "manifests/applications.yaml",
 		OutputDir:        "manifests",
 		ChartsDir:        "charts",
 	}
-)
+}

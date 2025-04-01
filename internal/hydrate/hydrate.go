@@ -1,4 +1,4 @@
-package renderer
+package hydrate
 
 import (
 	"fmt"
@@ -7,6 +7,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-hydrate/internal/render"
 	"github.com/kazysgurskas/argocd-hydrate/pkg/util"
 )
 
@@ -38,9 +39,9 @@ func HydrateFromApplication(app application.Application) ([]ManifestInfo, error)
 		var err error
 
 		if source.IsHelmChart() {
-			sourceManifestsStr, err = ProcessHelmChart(source, name, namespace)
+			sourceManifestsStr, err = render.ProcessHelmChart(source, name, namespace)
 		} else if source.IsDirectory() {
-			sourceManifestsStr, err = ProcessDirectory(source)
+			sourceManifestsStr, err = render.ProcessDirectory(source)
 		} else {
 			// Dump the source for debugging
 			sourceYaml, _ := yaml.Marshal(source)

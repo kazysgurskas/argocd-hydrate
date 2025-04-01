@@ -8,25 +8,27 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kazysgurskas/argocd-hydrate/internal/application"
-	"github.com/kazysgurskas/argocd-hydrate/internal/types"
-	"github.com/kazysgurskas/argocd-hydrate/internal/renderer"
+	"github.com/kazysgurskas/argocd-hydrate/internal/config"
+	"github.com/kazysgurskas/argocd-hydrate/internal/hydrate"
 	"github.com/kazysgurskas/argocd-hydrate/pkg/util"
 )
 
 // runHydrate is the main function for the hydrate command
 func runHydrate(cmd *cobra.Command, args []string) {
+	config := config.GetConfig()
+
 	// Load applications
-	applications, err := application.LoadApplications(types.Config.ApplicationsFile)
+	applications, err := application.LoadApplications(config.ApplicationsFile)
 	if err != nil {
 		fmt.Printf("Error loading applications: %v\n", err)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Found %d ArgoCD application(s) in %s\n", len(applications), types.Config.ApplicationsFile)
+	fmt.Printf("Found %d ArgoCD application(s) in %s\n", len(applications), config.ApplicationsFile)
 
 	// Ensure base output directory exists
-	if err := os.MkdirAll(types.Config.OutputDir, 0755); err != nil {
-		fmt.Printf("Error creating output directory %s: %v\n", types.Config.OutputDir, err)
+	if err := os.MkdirAll(config.OutputDir, 0755); err != nil {
+		fmt.Printf("Error creating output directory %s: %v\n", config.OutputDir, err)
 		os.Exit(1)
 	}
 
@@ -35,14 +37,14 @@ func runHydrate(cmd *cobra.Command, args []string) {
 		fmt.Printf("Processing application: %s\n", app.Metadata.Name)
 
 		// Create application output directory
-		appOutputDir := filepath.Join(types.Config.OutputDir, app.Metadata.Name)
+		appOutputDir := filepath.Join(config.OutputDir, app.Metadata.Name)
 		if err := os.MkdirAll(appOutputDir, 0755); err != nil {
 			fmt.Printf("Error creating application directory %s: %v\n", appOutputDir, err)
 			os.Exit(1)
 		}
 
 		// Render the application
-		manifests, err := renderer.HydrateFromApplication(app)
+		manifests, err := hydrate.HydrateFromApplication(app)
 		if err != nil {
 			fmt.Printf("Error hydrating application %s: %v\n", app.Metadata.Name, err)
 			os.Exit(1)
