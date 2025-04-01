@@ -1,5 +1,6 @@
 project_name: argocd-hydrate
-
+git:
+  ignore_tags: true
 builds:
   - env:
       - CGO_ENABLED=0
