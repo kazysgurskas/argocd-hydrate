@@ -115,6 +115,11 @@ func parseManifests(yamlContent string) ([]ManifestInfo, error) {
 		// Add document separator back to the content for proper YAML format
 		content := "---\n" + doc
 
+		// Ensure content ends with a newline
+		if !strings.HasSuffix(content, "\n") {
+			content += "\n"
+		}
+
 		manifests = append(manifests, ManifestInfo{
 			Kind:    kind,
 			Name:    name,
