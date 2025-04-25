@@ -2,6 +2,7 @@ package hydrate
 
 import (
 	"fmt"
+	"regexp"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -72,8 +73,8 @@ func HydrateFromApplication(app application.Application) ([]ManifestInfo, error)
 
 // parseManifests splits a multi-document YAML string into individual ManifestInfo objects
 func parseManifests(yamlContent string) ([]ManifestInfo, error) {
-	// Split the YAML by document separator
-	docs := strings.Split(yamlContent, "---")
+	re := regexp.MustCompile(`(?m)^---`)
+	docs := re.Split(yamlContent, -1)
 	var manifests []ManifestInfo
 
 	for _, doc := range docs {
