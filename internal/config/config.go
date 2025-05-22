@@ -10,13 +10,39 @@ type Configuration struct {
 
 	// ChartsDir is the directory for storing downloaded Helm charts
 	ChartsDir string
+
+	// KubeVersion is the Kubernetes version to use for rendering Helm charts
+	KubeVersion string
 }
 
-// DefaultConfig returns the current configuration with default values
+// Private configuration instance
+var instance *Configuration
+
+// GetConfig returns the current configuration, initializing it if needed
 func GetConfig() *Configuration {
+	if instance == nil {
+		// Initialize with default values
+		instance = &Configuration{
+			ApplicationsFile: "manifests/applications.yaml",
+			OutputDir:        "manifests",
+			ChartsDir:        "cache",
+			KubeVersion:      "1.31.1", // Default Kubernetes version
+		}
+	}
+	return instance
+}
+
+// SetConfig replaces the current configuration instance
+func SetConfig(config *Configuration) {
+	instance = config
+}
+
+// NewConfig creates a new configuration with default values
+func NewConfig() *Configuration {
 	return &Configuration{
 		ApplicationsFile: "manifests/applications.yaml",
 		OutputDir:        "manifests",
-		ChartsDir:        "charts",
+		ChartsDir:        "cache",
+		KubeVersion:      "1.31.1", // Default Kubernetes version
 	}
 }
