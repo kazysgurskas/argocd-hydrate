@@ -27,7 +27,11 @@ func getVersion() struct {
 
 // New creates a new root command for the argocd-hydrate CLI
 func New() *cobra.Command {
-	config := config.GetConfig()
+	// Create a new configuration with default values
+	cfg := config.NewConfig()
+
+	// Set this as the global configuration
+	config.SetConfig(cfg)
 
 	cmd := &cobra.Command{
 		Use:   "argocd-hydrate",
@@ -39,13 +43,15 @@ and directory-based sources.`,
 		Run: runHydrate,
 	}
 
-	// Define flags
-	cmd.PersistentFlags().StringVar(&config.ApplicationsFile, "applications", "default",
+	// Define flags - these modify the configuration we just created and set as global
+	cmd.PersistentFlags().StringVar(&cfg.ApplicationsFile, "applications", cfg.ApplicationsFile,
 		"Path to the file containing ArgoCD Application CRDs")
-	cmd.PersistentFlags().StringVar(&config.OutputDir, "output", "default",
+	cmd.PersistentFlags().StringVar(&cfg.OutputDir, "output", cfg.OutputDir,
 		"Output directory for the rendered manifests")
-	cmd.PersistentFlags().StringVar(&config.ChartsDir, "charts-dir", "default",
+	cmd.PersistentFlags().StringVar(&cfg.ChartsDir, "charts-dir", cfg.ChartsDir,
 		"Directory for storing downloaded Helm charts")
+	cmd.PersistentFlags().StringVar(&cfg.KubeVersion, "kube-version", cfg.KubeVersion,
+		"Kubernetes version to use for rendering Helm charts")
 
 	// Add examples
 	cmd.Example = `  # Use default values

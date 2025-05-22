@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
+	"helm.sh/helm/v3/pkg/chartutil"
 	"helm.sh/helm/v3/pkg/cli"
 	"helm.sh/helm/v3/pkg/getter"
 	"helm.sh/helm/v3/pkg/repo"
@@ -15,6 +17,12 @@ import (
 	"github.com/kazysgurskas/argocd-hydrate/internal/config"
 	"github.com/kazysgurskas/argocd-hydrate/pkg/util"
 )
+
+// isValidKubeVersion checks if the given string is a valid Kubernetes version
+func isValidKubeVersion(version string) bool {
+	re := regexp.MustCompile(`^(\d+)\.(\d+)(\.(\d+))?(-[a-zA-Z0-9]+)?$`)
+	return re.MatchString(version)
+}
 
 // isOCIURL checks if the URL is likely an OCI repository URL
 func isOCIURL(url string) bool {
@@ -167,6 +175,34 @@ func downloadHTTPSChart(url, chartName, repositoryCache string, settings *cli.En
 
 // RenderHelmChart renders a Helm chart using the Helm Go library
 func RenderHelmChart(chartPath, releaseName, namespace, version string, valueFiles []string) (string, error) {
+	config := config.GetConfig()
+
+	// Parse Kubernetes version
+	kubeVersion := config.KubeVersion
+
+	// Validate Kubernetes version format
+	if !isValidKubeVersion(kubeVersion) {
+		return "", fmt.Errorf("invalid Kubernetes version format: %s. Expected format: X.Y.Z", kubeVersion)
+	}
+
+	// Extract major and minor versions
+	parts := strings.Split(kubeVersion, ".")
+	major := "1"
+	minor := "26"
+
+	if len(parts) >= 2 {
+		major = parts[0]
+		minor = parts[1]
+
+		// Remove any non-numeric suffixes from minor version
+		for i, c := range minor {
+			if c < '0' || c > '9' {
+				minor = minor[:i]
+				break
+			}
+		}
+	}
+
 	// Load the chart
 	chartLoaded, err := loader.Load(chartPath)
 	if err != nil {
@@ -184,6 +220,13 @@ func RenderHelmChart(chartPath, releaseName, namespace, version string, valueFil
 	client.Version = version
 	client.ClientOnly = true
 	client.IncludeCRDs = true
+	client.KubeVersion = &chartutil.KubeVersion{
+    Version: kubeVersion,
+    Major:   major,
+    Minor:   minor,
+	}
+
+	fmt.Printf("Using Kubernetes version %s for rendering chart %s\n", kubeVersion, chartPath)
 
 	// Create values from files
 	values := make(map[string]interface{})
@@ -200,6 +243,11 @@ func RenderHelmChart(chartPath, releaseName, namespace, version string, valueFil
 	// Render the chart
 	release, err := client.Run(chartLoaded, values)
 	if err != nil {
+		if strings.Contains(err.Error(), "kubeVersion") {
+			fmt.Printf("Kubernetes version error detected. Chart requires: %s\n", chartLoaded.Metadata.KubeVersion)
+			fmt.Printf("We're using Kubernetes version: %s\n", client.KubeVersion.String())
+			fmt.Printf("Try using --kube-version flag to set a higher Kubernetes version\n")
+		}
 		return "", fmt.Errorf("failed to render chart: %w", err)
 	}
 
