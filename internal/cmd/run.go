@@ -56,29 +56,27 @@ func runHydrate(cmd *cobra.Command, args []string) {
 			continue
 		}
 
-		// Keep track of the resources written
-		resourceCounter := make(map[string]int)
-
 		// Write each manifest to a separate file
 		for _, manifest := range manifests {
-			// Create directory for this resource type
-			resourceTypeDir := filepath.Join(appOutputDir, manifest.Kind)
-			if err := os.MkdirAll(resourceTypeDir, 0755); err != nil {
-				fmt.Printf("Error creating resource type directory %s: %v\n", resourceTypeDir, err)
-				os.Exit(1)
-			}
-
 			// Form output file path
 			resourceName := util.SanitizeFileName(manifest.Name)
 
-			// Check if we've already seen a resource with this name and kind
-			// If so, append a counter to make the filename unique
-			key := manifest.Kind + "_" + resourceName
-			if count, exists := resourceCounter[key]; exists {
-				resourceCounter[key] = count + 1
-				resourceName = fmt.Sprintf("%s-%d", resourceName, count)
+			// Build directory path based on namespace
+			// Format: appOutputDir/namespace/Kind/name.yaml for namespaced resources
+			// Format: appOutputDir/Kind/name.yaml for cluster-scoped resources
+			var resourceTypeDir string
+			if manifest.Namespace != "" {
+				// Namespaced resource: create namespace/Kind directory structure
+				namespaceDir := util.SanitizeFileName(manifest.Namespace)
+				resourceTypeDir = filepath.Join(appOutputDir, namespaceDir, manifest.Kind)
 			} else {
-				resourceCounter[key] = 1
+				// Cluster-scoped resource: create Kind directory directly
+				resourceTypeDir = filepath.Join(appOutputDir, manifest.Kind)
+			}
+
+			if err := os.MkdirAll(resourceTypeDir, 0755); err != nil {
+				fmt.Printf("Error creating resource type directory %s: %v\n", resourceTypeDir, err)
+				os.Exit(1)
 			}
 
 			outputFile := filepath.Join(resourceTypeDir, resourceName+".yaml")

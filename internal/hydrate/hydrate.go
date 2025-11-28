@@ -14,9 +14,10 @@ import (
 
 // ManifestInfo represents a single Kubernetes manifest
 type ManifestInfo struct {
-	Kind    string
-	Name    string
-	Content string
+	Kind      string
+	Name      string
+	Namespace string
+	Content   string
 }
 
 // HydrateFromApplication hydrates ArgoCD application into Kubernetes manifests
@@ -113,6 +114,13 @@ func parseManifests(yamlContent string) ([]ManifestInfo, error) {
 			name = generateName + "generated"
 		}
 
+		// Extract namespace from metadata (may be empty for cluster-scoped resources)
+		namespace, ok := metadata["namespace"].(string)
+		if !ok {
+			// Namespace might not be present for cluster-scoped resources
+			namespace = ""
+		}
+
 		// Add document separator back to the content for proper YAML format
 		content := "---\n" + doc
 
@@ -122,9 +130,10 @@ func parseManifests(yamlContent string) ([]ManifestInfo, error) {
 		}
 
 		manifests = append(manifests, ManifestInfo{
-			Kind:    kind,
-			Name:    name,
-			Content: content,
+			Kind:      kind,
+			Name:      name,
+			Namespace: namespace,
+			Content:   content,
 		})
 	}
 
