@@ -121,6 +121,17 @@ func parseManifests(yamlContent string) ([]ManifestInfo, error) {
 			namespace = ""
 		}
 
+		// Obfuscate Secret data if this is a Secret
+		if kind == "Secret" {
+			obj = obfuscateSecretData(obj)
+			// Re-marshal the obfuscated YAML
+			obfuscatedYaml, err := yaml.Marshal(obj)
+			if err != nil {
+				return nil, fmt.Errorf("error marshaling obfuscated Secret: %w", err)
+			}
+			doc = strings.TrimSpace(string(obfuscatedYaml))
+		}
+
 		// Add document separator back to the content for proper YAML format
 		content := "---\n" + doc
 
@@ -138,4 +149,29 @@ func parseManifests(yamlContent string) ([]ManifestInfo, error) {
 	}
 
 	return manifests, nil
+}
+
+// obfuscateSecretData replaces all values in the data and stringData fields of a Secret with obfuscated values
+func obfuscateSecretData(obj map[string]interface{}) map[string]interface{} {
+	// Obfuscate data field if it exists
+	if data, ok := obj["data"].(map[string]interface{}); ok {
+		obfuscatedData := make(map[string]interface{})
+		for key := range data {
+			// Replace each value with obfuscated placeholder
+			obfuscatedData[key] = "***REDACTED***"
+		}
+		obj["data"] = obfuscatedData
+	}
+
+	// Obfuscate stringData field if it exists
+	if stringData, ok := obj["stringData"].(map[string]interface{}); ok {
+		obfuscatedStringData := make(map[string]interface{})
+		for key := range stringData {
+			// Replace each value with obfuscated placeholder
+			obfuscatedStringData[key] = "***REDACTED***"
+		}
+		obj["stringData"] = obfuscatedStringData
+	}
+
+	return obj
 }
