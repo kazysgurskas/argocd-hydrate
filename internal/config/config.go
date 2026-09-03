@@ -26,7 +26,7 @@ func GetConfig() *Configuration {
 			ApplicationsFile: "manifests/applications.yaml",
 			OutputDir:        "manifests",
 			ChartsDir:        "cache",
-			KubeVersion:      "1.31.1", // Default Kubernetes version
+			KubeVersion:      "1.35.6", // Default Kubernetes version
 		}
 	}
 	return instance
