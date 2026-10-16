@@ -95,7 +95,7 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	if err != nil {
 		return fmt.Errorf("create %s: %w", o.output, err)
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	if err := report.Render(out, result, o.meta); err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}

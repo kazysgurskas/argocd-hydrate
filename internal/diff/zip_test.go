@@ -15,9 +15,9 @@ func zipDir(t *testing.T, dir, archive string) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	w := zip.NewWriter(out)
-	defer w.Close()
+	defer func() { _ = w.Close() }()
 	err = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
 		if err != nil || info.IsDir() {
 			return err
@@ -34,7 +34,7 @@ func zipDir(t *testing.T, dir, archive string) {
 		if err != nil {
 			return err
 		}
-		defer in.Close()
+		defer func() { _ = in.Close() }()
 		_, err = io.Copy(f, in)
 		return err
 	})

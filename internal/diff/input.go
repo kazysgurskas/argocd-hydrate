@@ -42,7 +42,7 @@ func extractZip(archive, dest string) error {
 	if err != nil {
 		return err
 	}
-	defer r.Close()
+	defer func() { _ = r.Close() }()
 	root := filepath.Clean(dest) + string(os.PathSeparator)
 	for _, f := range r.File {
 		target := filepath.Join(dest, f.Name) //nolint:gosec // checked against root below
@@ -70,12 +70,12 @@ func writeEntry(f *zip.File, target string) error {
 	if err != nil {
 		return err
 	}
-	defer in.Close()
+	defer func() { _ = in.Close() }()
 	out, err := os.OpenFile(target, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o644)
 	if err != nil {
 		return err
 	}
-	defer out.Close()
+	defer func() { _ = out.Close() }()
 	_, err = io.Copy(out, in) //nolint:gosec // manifests, bounded by the archive
 	return err
 }
