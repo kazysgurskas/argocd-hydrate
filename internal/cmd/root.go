@@ -6,68 +6,53 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kazysgurskas/argocd-hydrate/internal/config"
+	"github.com/kazysgurskas/argocd-hydrate/internal/version"
 )
 
-// getVersion returns the version information filled by LDFLAGS during build
-func getVersion() struct {
-	Version   string
-	GitCommit string
-	BuildDate string
-} {
-	return struct {
-		Version   string
-		GitCommit string
-		BuildDate string
-	}{
-		Version:   "dev",
-		GitCommit: "none",
-		BuildDate: "unknown",
-	}
-}
-
-// New creates a new root command for the argocd-hydrate CLI
+// New creates the root command. Running it with no subcommand hydrates, as
+// earlier versions did; `hydrate` and `diff` are the explicit forms.
 func New() *cobra.Command {
-	// Create a new configuration with default values
 	cfg := config.NewConfig()
-
-	// Set this as the global configuration
 	config.SetConfig(cfg)
 
-	cmd := &cobra.Command{
+	root := &cobra.Command{
 		Use:   "argocd-hydrate",
-		Short: "Hydrate ArgoCD applications into Kubernetes manifests",
+		Short: "Hydrate ArgoCD applications into Kubernetes manifests, and diff the results",
 		Long: `ArgoCD Hydrate - Render ArgoCD Applications into Kubernetes manifests
 
 This tool takes ArgoCD Application custom resources and renders Kubernetes manifests. It supports applications that use Helm charts
-and directory-based sources.`,
+and directory-based sources. "argocd-hydrate diff" compares two rendered trees and writes an HTML report.`,
 		Run: runHydrate,
-	}
-
-	// Define flags - these modify the configuration we just created and set as global
-	cmd.PersistentFlags().StringVar(&cfg.ApplicationsFile, "applications", cfg.ApplicationsFile,
-		"Path to the file containing ArgoCD Application CRDs")
-	cmd.PersistentFlags().StringVar(&cfg.OutputDir, "output", cfg.OutputDir,
-		"Output directory for the rendered manifests")
-	cmd.PersistentFlags().StringVar(&cfg.ChartsDir, "charts-dir", cfg.ChartsDir,
-		"Directory for storing downloaded Helm charts")
-	cmd.PersistentFlags().StringVar(&cfg.KubeVersion, "kube-version", cfg.KubeVersion,
-		"Kubernetes version to use for rendering Helm charts")
-
-	// Add examples
-	cmd.Example = `  # Use default values
+		Example: `  # Hydrate with the default values
   argocd-hydrate
 
   # Specify custom applications file and output directory
   argocd-hydrate --applications=apps/applications.yaml --output=rendered
 
-  # Specify custom charts directory
-  argocd-hydrate --charts-dir=/path/to/charts`
+  # Compare two rendered trees (directories or zip files) into an HTML report
+  argocd-hydrate diff --base base-manifests --head head-manifests --output diff.html`,
+		Version: fmt.Sprintf("%s (commit %s, built %s)", version.Version, version.GitCommit, version.BuildDate),
+	}
+	addHydrateFlags(root, cfg)
 
-	// Use version information from LDFLAGS
-	versionInfo := getVersion()
-	versionTemplate := fmt.Sprintf("Version: %s\nGit Commit: %s\nBuild Date: %s",
-		versionInfo.Version, versionInfo.GitCommit, versionInfo.BuildDate)
-	cmd.Version = versionTemplate
+	hydrate := &cobra.Command{
+		Use:   "hydrate",
+		Short: "Render ArgoCD applications into Kubernetes manifests",
+		Run:   runHydrate,
+	}
+	addHydrateFlags(hydrate, cfg)
 
-	return cmd
+	root.AddCommand(hydrate, newDiffCommand())
+	return root
+}
+
+func addHydrateFlags(cmd *cobra.Command, cfg *config.Configuration) {
+	cmd.Flags().StringVar(&cfg.ApplicationsFile, "applications", cfg.ApplicationsFile,
+		"Path to the file containing ArgoCD Application CRDs")
+	cmd.Flags().StringVar(&cfg.OutputDir, "output", cfg.OutputDir,
+		"Output directory for the rendered manifests")
+	cmd.Flags().StringVar(&cfg.ChartsDir, "charts-dir", cfg.ChartsDir,
+		"Directory for storing downloaded Helm charts")
+	cmd.Flags().StringVar(&cfg.KubeVersion, "kube-version", cfg.KubeVersion,
+		"Kubernetes version to use for rendering Helm charts")
 }

@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Title}} - manifest diff</title>
+<style>
+:root {
+  --bg: #f6f8fa; --panel: #ffffff; --line: #d0d7de; --line-soft: #e8ecf0;
+  --fg: #1f2328; --fg-muted: #59636e; --fg-faint: #8b949e;
+  --accent: #0969da; --accent-soft: #ddf4ff;
+  --add-bg: #dafbe1; --add-bg-strong: #aceebb; --add-fg: #1a7f37;
+  --del-bg: #ffebe9; --del-bg-strong: #ffcecb; --del-fg: #cf222e;
+  --mod-fg: #9a6700; --mod-bg: #fff8c5;
+  --hunk-bg: #f1f8ff; --hunk-fg: #57606a;
+  --code-key: #0550ae; --code-str: #0a3069; --code-num: #8250df; --code-cmt: #6e7781;
+  --shadow: 0 1px 2px rgba(31,35,40,.06);
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+}
+[data-theme="dark"] {
+  --bg: #0d1117; --panel: #161b22; --line: #30363d; --line-soft: #21262d;
+  --fg: #e6edf3; --fg-muted: #9198a1; --fg-faint: #6e7681;
+  --accent: #4493f8; --accent-soft: #10243e;
+  --add-bg: #12261e; --add-bg-strong: #1f4a2d; --add-fg: #3fb950;
+  --del-bg: #2a1215; --del-bg-strong: #5c2326; --del-fg: #f85149;
+  --mod-fg: #d29922; --mod-bg: #2a2111;
+  --hunk-bg: #121d2f; --hunk-fg: #8b949e;
+  --code-key: #79c0ff; --code-str: #a5d6ff; --code-num: #d2a8ff; --code-cmt: #8b949e;
+  --shadow: none;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0d1117; --panel: #161b22; --line: #30363d; --line-soft: #21262d;
+  --fg: #e6edf3; --fg-muted: #9198a1; --fg-faint: #6e7681;
+  --accent: #4493f8; --accent-soft: #10243e;
+  --add-bg: #12261e; --add-bg-strong: #1f4a2d; --add-fg: #3fb950;
+  --del-bg: #2a1215; --del-bg-strong: #5c2326; --del-fg: #f85149;
+  --mod-fg: #d29922; --mod-bg: #2a2111;
+  --hunk-bg: #121d2f; --hunk-fg: #8b949e;
+  --code-key: #79c0ff; --code-str: #a5d6ff; --code-num: #d2a8ff; --code-cmt: #8b949e;
+  --shadow: none;
+}}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.5 var(--sans); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+button, select, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+.btn { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; line-height: 20px; }
+.btn:hover { border-color: var(--fg-faint); }
+.btn.on { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.btn.sm { padding: 2px 8px; font-size: 12px; line-height: 18px; }
+.btn:disabled { opacity: .5; cursor: default; }
+select.ctl, input.ctl { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; line-height: 20px; }
+input.ctl { min-width: 240px; }
+
+.top { background: var(--panel); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
+.top-inner { max-width: 1800px; margin: 0 auto; padding: 12px 20px 10px; }
+.titlebar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+.titlebar h1 { font-size: 18px; margin: 0; font-weight: 600; }
+.titlebar .pr-title { color: var(--fg-muted); }
+.subline { color: var(--fg-muted); font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 2px; }
+.subline code { font-family: var(--mono); font-size: 12px; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 4px; padding: 0 5px; }
+.summary { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; align-items: center; }
+.chip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 12.5px; background: var(--bg); }
+.chip b { font-weight: 600; }
+.add { color: var(--add-fg); } .del { color: var(--del-fg); } .mod { color: var(--mod-fg); }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 10px; }
+.toolbar .sep { width: 1px; height: 22px; background: var(--line); margin: 0 4px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { background: var(--panel); border: 0; padding: 4px 10px; line-height: 20px; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button.on { background: var(--accent-soft); color: var(--accent); }
+.kbd { font-family: var(--mono); font-size: 11px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; color: var(--fg-muted); }
+.hint { margin-left: auto; color: var(--fg-faint); font-size: 12px; }
+
+.layout { max-width: 1800px; margin: 0 auto; padding: 16px 20px; display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 900px) { .layout { grid-template-columns: minmax(0,1fr); } .sidebar { position: static; max-height: none; } }
+.sidebar { position: sticky; top: var(--top-h, 150px); max-height: calc(100vh - var(--top-h, 150px) - 16px); overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 0; font-size: 13px; }
+.sidebar .count { color: var(--fg-muted); padding: 4px 14px 8px; font-size: 12px; }
+.group { border-top: 1px solid var(--line-soft); }
+.group-h { display: flex; align-items: center; gap: 6px; padding: 7px 10px 7px 12px; cursor: pointer; user-select: none; }
+.group-h:hover { background: var(--bg); }
+.chev { display: inline-block; width: 14px; color: var(--fg-faint); transition: transform .12s; text-align: center; }
+.group.closed .chev { transform: rotate(-90deg); }
+.group-h .gname { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.group-h .gsub { color: var(--fg-muted); font-size: 11.5px; }
+.group.closed .items { display: none; }
+.item { display: flex; align-items: center; gap: 8px; padding: 4px 10px 4px 26px; cursor: pointer; border-left: 3px solid transparent; }
+.item:hover { background: var(--bg); }
+.item.active { background: var(--accent-soft); border-left-color: var(--accent); }
+.item.hide, .group.hide, .file.hide { display: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dot.added { background: var(--add-fg); } .dot.deleted { background: var(--del-fg); } .dot.modified { background: var(--mod-fg); }
+.item .kind { color: var(--fg-muted); font-size: 11.5px; flex: none; }
+.item .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--mono); font-size: 12px; }
+.stat { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; }
+
+.file { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; box-shadow: var(--shadow); scroll-margin-top: calc(var(--top-h, 150px) + 10px); }
+.file-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-bottom: 1px solid var(--line-soft); position: sticky; top: var(--top-h, 150px); background: var(--panel); border-radius: 8px 8px 0 0; z-index: 5; cursor: pointer; }
+.file.collapsed .file-h { border-bottom: 0; border-radius: 8px; }
+.file.collapsed .file-b { display: none; }
+.file.collapsed .file-h .chev { transform: rotate(-90deg); }
+.file-h .title { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.badge { display: inline-block; border-radius: 4px; padding: 0 6px; font-size: 11.5px; line-height: 18px; border: 1px solid var(--line); color: var(--fg-muted); background: var(--bg); }
+.badge.kind { color: var(--fg); font-weight: 600; }
+.pill { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .3px; border-radius: 999px; padding: 1px 8px; }
+.pill.added { background: var(--add-bg); color: var(--add-fg); } .pill.deleted { background: var(--del-bg); color: var(--del-fg); } .pill.modified { background: var(--mod-bg); color: var(--mod-fg); }
+.rname { font-family: var(--mono); font-size: 13px; font-weight: 600; }
+.rns { color: var(--fg-muted); font-size: 12.5px; }
+.rpath { flex-basis: 100%; color: var(--fg-faint); font-family: var(--mono); font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-h .actions { display: flex; gap: 8px; align-items: center; flex: none; }
+.file-b { font-family: var(--mono); font-size: 12px; line-height: 20px; overflow-x: auto; }
+.file-b.wrap .txt { white-space: pre-wrap; word-break: break-all; }
+.placeholder { padding: 24px; color: var(--fg-muted); text-align: center; font-family: var(--sans); }
+
+.row { display: grid; grid-template-columns: 50px 50px 18px minmax(0,1fr); }
+.row.add { background: var(--add-bg); } .row.del { background: var(--del-bg); }
+.ln { text-align: right; padding: 0 8px 0 4px; color: var(--fg-faint); user-select: none; border-right: 1px solid var(--line-soft); }
+.row.add .ln, .row.del .ln, .side.add .ln, .side.del .ln { color: var(--fg-muted); }
+.sign { text-align: center; color: var(--fg-muted); user-select: none; }
+.row.add .sign { color: var(--add-fg); } .row.del .sign { color: var(--del-fg); }
+.txt { white-space: pre; padding: 0 12px 0 6px; tab-size: 2; }
+mark { background: var(--del-bg-strong); color: inherit; border-radius: 2px; }
+.row.add mark, .side.add mark { background: var(--add-bg-strong); }
+.hunk { background: var(--hunk-bg); color: var(--hunk-fg); padding: 2px 12px; font-size: 11.5px; display: flex; align-items: center; gap: 10px; border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+.hunk .x { flex: 1; }
+.hunk button { background: none; border: 1px solid var(--line); border-radius: 4px; color: var(--accent); font-size: 11px; padding: 0 6px; font-family: var(--sans); }
+.k { color: var(--code-key); } .s { color: var(--code-str); } .n { color: var(--code-num); } .c { color: var(--code-cmt); font-style: italic; }
+
+.srow { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+.side { display: grid; grid-template-columns: 50px minmax(0,1fr); min-width: 0; }
+.side + .side { border-left: 1px solid var(--line); }
+.side.add { background: var(--add-bg); } .side.del { background: var(--del-bg); }
+.side.blank { background: repeating-linear-gradient(135deg, transparent 0 6px, var(--line-soft) 6px 7px); }
+.more { font-family: var(--sans); padding: 6px 12px; border-top: 1px solid var(--line-soft); }
+
+.empty { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 48px; text-align: center; color: var(--fg-muted); grid-column: 1 / -1; }
+.empty h2 { margin: 0 0 6px; color: var(--fg); }
+.footer { max-width: 1800px; margin: 0 auto; padding: 8px 20px 24px; color: var(--fg-faint); font-size: 12px; }
+@media print { .top { position: static; } .sidebar, .toolbar { display: none; } .layout { display: block; } .file-h { position: static; } }
+</style>
+</head>
+<body>
+<script type="application/json" id="diff-data">{{.Data}}</script>
+<noscript><p style="padding:20px">This report needs JavaScript to render.</p></noscript>
+<header class="top"><div class="top-inner" id="top"></div></header>
+<div class="layout" id="layout"></div>
+<div class="footer" id="footer"></div>
+<script>
+(function () {
+'use strict';
+var DATA = JSON.parse(document.getElementById('diff-data').textContent);
+var meta = DATA.meta, R = DATA.result, files = R.files || [];
+var state = { view: 'unified', context: 'compact', wrap: false, q: '', status: new Set(), app: '', env: '', cluster: '', kind: '', active: -1 };
+var LIMIT = 300;
+
+function esc(s) { return s.replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
+function h(tag, attrs) {
+  var el = document.createElement(tag);
+  attrs = attrs || {};
+  Object.keys(attrs).forEach(function (k) {
+    var v = attrs[k];
+    if (v === null || v === undefined) return;
+    if (k === 'class') el.className = v;
+    else if (k === 'html') el.innerHTML = v;
+    else if (k.indexOf('on') === 0) el.addEventListener(k.slice(2), v);
+    else if (k === 'disabled') el.disabled = !!v;
+    else el.setAttribute(k, v);
+  });
+  for (var i = 2; i < arguments.length; i++) append(el, arguments[i]);
+  return el;
+}
+function append(el, kid) {
+  if (kid === null || kid === undefined || kid === false) return;
+  if (Array.isArray(kid)) { kid.forEach(function (k) { append(el, k); }); return; }
+  el.appendChild(kid.nodeType ? kid : document.createTextNode(String(kid)));
+}
+function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+function statText(add, del) {
+  return h('span', {class: 'stat'}, add ? h('span', {class: 'add'}, '+' + add) : null, add && del ? ' ' : null, del ? h('span', {class: 'del'}, '-' + del) : null);
+}
+function res(f) { return f.resource || {}; }
+function appLabel(f) { return res(f).app || f.path.split('/')[0]; }
+function groupKey(f) { var r = res(f); return [appLabel(f), r.environment || '', r.cluster || ''].join('|'); }
+function displayName(f) { return res(f).name || f.path.split('/').pop().replace(/\.ya?ml$/, ''); }
+
+/* YAML tint on an already escaped line. */
+function tint(text) {
+  var e = esc(text);
+  var m = e.match(/^(\s*(?:- )?)([^#:]+?)(:)(\s|$)(.*)$/);
+  if (m && !/^(&quot;|&#39;)/.test(m[2])) return m[1] + '<span class="k">' + m[2] + '</span>' + m[3] + m[4] + tintValue(m[5]);
+  return tintValue(e);
+}
+function tintValue(v) {
+  if (v === '') return v;
+  if (v.charAt(0) === '#') return '<span class="c">' + v + '</span>';
+  var ci = v.indexOf(' #'), tail = '';
+  if (ci >= 0) { tail = '<span class="c">' + v.slice(ci) + '</span>'; v = v.slice(0, ci); }
+  var t = v.trim();
+  if (/^(&quot;|&#39;)/.test(t) || /^(true|false|null|~)$/i.test(t)) return '<span class="s">' + v + '</span>' + tail;
+  if (/^-?\d+(\.\d+)?$/.test(t)) return '<span class="n">' + v + '</span>' + tail;
+  return v + tail;
+}
+function lineHTML(l) {
+  if (l.hl && (l.hl[0] || l.hl[1])) {
+    return esc(l.x.slice(0, l.hl[0])) + '<mark>' + esc(l.x.slice(l.hl[0], l.hl[1])) + '</mark>' + esc(l.x.slice(l.hl[1]));
+  }
+  return tint(l.x);
+}
+
+/* header */
+function buildTop() {
+  var top = document.getElementById('top');
+  var title = h('h1', {}, meta.prUrl ? h('a', {href: meta.prUrl, target: '_blank', rel: 'noopener'}, meta.title) : meta.title);
+  var tb = h('div', {class: 'titlebar'}, title, meta.prTitle ? h('span', {class: 'pr-title'}, meta.prTitle) : null);
+  var sub = h('div', {class: 'subline'});
+  if (meta.baseRef || meta.headRef) append(sub, h('span', {}, h('code', {}, meta.baseRef || 'base'), ' → ', h('code', {}, meta.headRef || 'head')));
+  if (meta.author) append(sub, h('span', {}, 'by ' + meta.author));
+  if (meta.generatedAt) append(sub, h('span', {}, 'generated ' + new Date(meta.generatedAt).toLocaleString()));
+  var apps = new Set(files.map(appLabel));
+  var envs = new Set(files.map(function (f) { return res(f).environment; }).filter(Boolean));
+  var clusters = new Set(files.map(function (f) { return res(f).cluster; }).filter(Boolean));
+  var kinds = new Set(files.map(function (f) { return res(f).kind; }).filter(Boolean));
+  var sum = h('div', {class: 'summary'},
+    h('span', {class: 'chip'}, h('b', {}, plural(files.length, 'file')), 'changed'),
+    h('span', {class: 'chip'}, h('span', {class: 'add'}, h('b', {}, R.added || 0), ' added'), h('span', {class: 'mod'}, h('b', {}, R.modified || 0), ' modified'), h('span', {class: 'del'}, h('b', {}, R.deleted || 0), ' deleted')),
+    h('span', {class: 'chip'}, h('span', {class: 'add'}, '+' + (R.additions || 0)), h('span', {class: 'del'}, '-' + (R.deletions || 0))),
+    h('span', {class: 'chip'}, h('b', {}, apps.size), apps.size === 1 ? 'application' : 'applications'),
+    clusters.size ? h('span', {class: 'chip'}, h('b', {}, clusters.size), clusters.size === 1 ? 'cluster' : 'clusters') : null,
+    h('span', {class: 'chip'}, h('b', {}, kinds.size), kinds.size === 1 ? 'kind' : 'kinds'));
+  var search = h('input', {class: 'ctl', id: 'q', type: 'search', placeholder: 'Filter by name, kind, namespace, path  ( / )', oninput: function (e) { state.q = e.target.value.trim().toLowerCase(); applyFilters(); }});
+  function sel(id, label, values) {
+    if (values.size < 2) return null;
+    var s = h('select', {class: 'ctl', id: id, onchange: function (e) { state[id] = e.target.value; applyFilters(); }}, h('option', {value: ''}, label));
+    Array.from(values).sort().forEach(function (v) { append(s, h('option', {value: v}, v)); });
+    return s;
+  }
+  var statusSeg = h('div', {class: 'seg', id: 'status-seg'}, ['added', 'modified', 'deleted'].map(function (s) {
+    return h('button', {'data-s': s, onclick: function (e) { if (state.status.has(s)) state.status.delete(s); else state.status.add(s); e.currentTarget.classList.toggle('on'); applyFilters(); }}, s);
+  }));
+  var viewSeg = h('div', {class: 'seg'}, h('button', {class: 'on', 'data-v': 'unified', onclick: function () { setView('unified'); }}, 'Unified'), h('button', {'data-v': 'split', onclick: function () { setView('split'); }}, 'Split'));
+  var ctxSeg = h('div', {class: 'seg'}, h('button', {class: 'on', 'data-c': 'compact', onclick: function () { setContext('compact'); }}, 'Changes'), h('button', {'data-c': 'full', onclick: function () { setContext('full'); }}, 'Full files'));
+  var wrapBtn = h('button', {class: 'btn', onclick: function (e) { state.wrap = !state.wrap; e.currentTarget.classList.toggle('on', state.wrap); document.querySelectorAll('.file-b').forEach(function (b) { b.classList.toggle('wrap', state.wrap); }); }}, 'Wrap');
+  var expandAll = h('button', {class: 'btn', onclick: function () { document.querySelectorAll('.file').forEach(function (f) { f.classList.remove('collapsed'); ensureBody(f); }); }}, 'Expand all');
+  var collapseAll = h('button', {class: 'btn', onclick: function () { document.querySelectorAll('.file').forEach(function (f) { f.classList.add('collapsed'); }); }}, 'Collapse all');
+  var theme = h('button', {class: 'btn', title: 'Toggle light/dark theme', onclick: toggleTheme}, 'Theme');
+  var toolbar = h('div', {class: 'toolbar'}, search, statusSeg,
+    sel('app', 'All applications', apps), sel('env', 'All environments', envs), sel('cluster', 'All clusters', clusters), sel('kind', 'All kinds', kinds),
+    h('button', {class: 'btn sm', id: 'clear', onclick: clearFilters, disabled: true}, 'Clear'),
+    h('span', {class: 'sep'}), viewSeg, ctxSeg, wrapBtn, h('span', {class: 'sep'}), expandAll, collapseAll, theme,
+    h('span', {class: 'hint'}, h('span', {class: 'kbd'}, 'j'), ' ', h('span', {class: 'kbd'}, 'k'), ' next / previous file'));
+  append(top, [tb, sub, sum, toolbar]);
+}
+function toggleTheme() {
+  var root = document.documentElement;
+  var dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  root.dataset.theme = dark ? 'light' : 'dark';
+  try { localStorage.setItem('diff-theme', root.dataset.theme); } catch (e) {}
+}
+try { var saved = localStorage.getItem('diff-theme'); if (saved) document.documentElement.dataset.theme = saved; } catch (e) {}
+
+/* sidebar */
+var groups = [];
+(function () {
+  var byKey = {};
+  files.forEach(function (f, i) {
+    var k = groupKey(f);
+    if (!byKey[k]) { byKey[k] = {key: k, app: appLabel(f), env: res(f).environment || '', cluster: res(f).cluster || '', idx: [], add: 0, del: 0}; groups.push(byKey[k]); }
+    var g = byKey[k]; g.idx.push(i); g.add += f.additions; g.del += f.deletions;
+  });
+})();
+function buildSidebar() {
+  var nav = h('nav', {class: 'sidebar', id: 'sidebar'}, h('div', {class: 'count', id: 'count'}));
+  groups.forEach(function (g) {
+    var gel = h('div', {class: 'group'});
+    var sub = [g.env, g.cluster].filter(Boolean).join(' · ');
+    append(gel, h('div', {class: 'group-h', onclick: function () { gel.classList.toggle('closed'); }}, h('span', {class: 'chev'}, '▾'), h('span', {class: 'gname', title: g.app}, g.app), sub ? h('span', {class: 'gsub'}, sub) : null, statText(g.add, g.del)));
+    var items = h('div', {class: 'items'});
+    g.idx.forEach(function (i) {
+      var f = files[i], r = res(f);
+      append(items, h('div', {class: 'item', id: 'nav-' + i, title: f.path, onclick: function () { goTo(i); }}, h('span', {class: 'dot ' + f.status}), r.kind ? h('span', {class: 'kind'}, r.kind) : null, h('span', {class: 'name'}, displayName(f)), statText(f.additions, f.deletions)));
+    });
+    append(gel, items);
+    append(nav, gel);
+  });
+  return nav;
+}
+
+/* file cards */
+function buildFile(i) {
+  var f = files[i], r = res(f);
+  var card = h('section', {class: 'file', id: 'file-' + i, 'data-i': i});
+  var title = h('div', {class: 'title'},
+    r.kind ? h('span', {class: 'badge kind'}, r.kind) : null,
+    h('span', {class: 'rname'}, displayName(f)),
+    r.namespace ? h('span', {class: 'rns'}, 'in ' + r.namespace) : null,
+    r.app ? h('span', {class: 'badge'}, r.app) : null, r.environment ? h('span', {class: 'badge'}, r.environment) : null,
+    r.cluster ? h('span', {class: 'badge'}, r.cluster) : null, r.apiVersion ? h('span', {class: 'badge'}, r.apiVersion) : null,
+    h('span', {class: 'rpath'}, f.path));
+  var copy = h('button', {class: 'btn sm', title: 'Copy path', onclick: function (e) {
+    e.stopPropagation();
+    if (navigator.clipboard) navigator.clipboard.writeText(f.path);
+    var b = e.currentTarget; b.textContent = 'Copied'; setTimeout(function () { b.textContent = 'Copy path'; }, 1200);
+  }}, 'Copy path');
+  var head = h('div', {class: 'file-h', onclick: function () { card.classList.toggle('collapsed'); if (!card.classList.contains('collapsed')) ensureBody(card); }},
+    h('span', {class: 'chev'}, '▾'), title, h('div', {class: 'actions'}, h('span', {class: 'pill ' + f.status}, f.status), statText(f.additions, f.deletions), copy));
+  append(card, [head, h('div', {class: 'file-b' + (state.wrap ? ' wrap' : '')}, h('div', {class: 'placeholder'}, 'Loading'))]);
+  return card;
+}
+function ensureBody(card) {
+  var key = state.view + '/' + state.context;
+  if (card.dataset.rendered === key) return;
+  var i = +card.dataset.i, body = card.querySelector('.file-b');
+  var frag = document.createDocumentFragment();
+  renderBody(files[i], i).forEach(function (n) { if (n) frag.appendChild(n); });
+  body.replaceChildren(frag);
+  card.dataset.rendered = key;
+}
+function renderBody(f, i) {
+  var out = [];
+  var whole = f.status !== 'modified';
+  var full = !whole && state.context === 'full' && f.base && f.head;
+  var hunks = full ? [fullHunk(f)] : f.hunks;
+  hunks.forEach(function (hk, hi) {
+    if (!whole && !full) out.push(hunkHeader(f, hi));
+    var lines = (whole && hk.lines.length > LIMIT && !f._all) ? hk.lines.slice(0, LIMIT) : hk.lines;
+    out.push(state.view === 'split' ? renderSplit(lines) : renderUnified(lines));
+    if (whole && hk.lines.length > LIMIT && !f._all) {
+      out.push(h('div', {class: 'more'}, h('button', {class: 'btn sm', onclick: function () { f._all = true; var c = document.getElementById('file-' + i); c.dataset.rendered = ''; ensureBody(c); }}, 'Show all ' + hk.lines.length + ' lines')));
+    }
+  });
+  if (!whole && !full && f.base) out.push(tailGap(f));
+  return out;
+}
+function fullHunk(f) {
+  var lines = [], b = 1, hd = 1, k = 0;
+  while (b <= f.base.length || hd <= f.head.length) {
+    var hk = f.hunks[k];
+    if (hk && b === hk.bs && hd === hk.hs) { lines = lines.concat(hk.lines); b += hk.bl; hd += hk.hl; k++; continue; }
+    if (b > f.base.length && hd > f.head.length) break;
+    lines.push({t: 'ctx', b: b, h: hd, x: b <= f.base.length ? f.base[b - 1] : f.head[hd - 1]}); b++; hd++;
+  }
+  return {lines: lines};
+}
+function hunkHeader(f, hi) {
+  var hk = f.hunks[hi], prev = f.hunks[hi - 1];
+  var gapStart = prev ? prev.bs + prev.bl : 1, gapEnd = hk.bs - 1, gap = gapEnd - gapStart + 1;
+  var el = h('div', {class: 'hunk'}, h('span', {class: 'x'}, '@@ -' + hk.bs + ',' + hk.bl + ' +' + hk.hs + ',' + hk.hl + ' @@' + (gap > 0 ? '   ' + plural(gap, 'unchanged line') + ' above' : '')));
+  if (gap > 0 && f.base) append(el, h('button', {onclick: function (e) { expandGap(e.currentTarget.parentNode, f, gapStart, gapEnd, prev ? prev.hs + prev.hl : 1); }}, 'Expand'));
+  return el;
+}
+function tailGap(f) {
+  var last = f.hunks[f.hunks.length - 1], start = last.bs + last.bl, end = f.base.length, gap = end - start + 1;
+  if (gap <= 0) return null;
+  var el = h('div', {class: 'hunk'}, h('span', {class: 'x'}, plural(gap, 'unchanged line') + ' below'));
+  append(el, h('button', {onclick: function (e) { expandGap(e.currentTarget.parentNode, f, start, end, last.hs + last.hl); }}, 'Expand'));
+  return el;
+}
+function expandGap(hunkEl, f, bStart, bEnd, hStart) {
+  var lines = [];
+  for (var b = bStart, hd = hStart; b <= bEnd; b++, hd++) lines.push({t: 'ctx', b: b, h: hd, x: f.base[b - 1]});
+  hunkEl.replaceWith(state.view === 'split' ? renderSplit(lines) : renderUnified(lines));
+}
+function renderUnified(lines) {
+  var frag = document.createDocumentFragment();
+  lines.forEach(function (l) {
+    var row = h('div', {class: 'row ' + l.t});
+    row.innerHTML = '<span class="ln">' + (l.b || '') + '</span><span class="ln">' + (l.h || '') + '</span><span class="sign">' + (l.t === 'add' ? '+' : l.t === 'del' ? '-' : '') + '</span><code class="txt">' + lineHTML(l) + '</code>';
+    frag.appendChild(row);
+  });
+  return frag;
+}
+function side(l, cls) {
+  if (!l) return '<div class="side blank"><span class="ln"></span><code class="txt"></code></div>';
+  return '<div class="side ' + cls + '"><span class="ln">' + (cls === 'add' ? (l.h || '') : (l.b || '')) + '</span><code class="txt">' + lineHTML(l) + '</code></div>';
+}
+function renderSplit(lines) {
+  var frag = document.createDocumentFragment(), i = 0;
+  while (i < lines.length) {
+    var l = lines[i];
+    if (l.t === 'ctx') { var row = h('div', {class: 'srow'}); row.innerHTML = side(l, 'ctx') + side(l, 'ctx'); frag.appendChild(row); i++; continue; }
+    var dels = [], adds = [];
+    while (i < lines.length && lines[i].t === 'del') dels.push(lines[i++]);
+    while (i < lines.length && lines[i].t === 'add') adds.push(lines[i++]);
+    for (var k = 0; k < Math.max(dels.length, adds.length); k++) { var r = h('div', {class: 'srow'}); r.innerHTML = side(dels[k], 'del') + side(adds[k], 'add'); frag.appendChild(r); }
+  }
+  return frag;
+}
+
+/* state */
+var visible = new Set();
+function rerenderAll() { document.querySelectorAll('.file').forEach(function (c) { c.dataset.rendered = ''; if (!c.classList.contains('collapsed') && visible.has(c)) ensureBody(c); }); }
+function setView(v) { state.view = v; document.querySelectorAll('[data-v]').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); }); rerenderAll(); }
+function setContext(c) { state.context = c; document.querySelectorAll('[data-c]').forEach(function (b) { b.classList.toggle('on', b.dataset.c === c); }); rerenderAll(); }
+function matches(f) {
+  var r = res(f);
+  if (state.status.size && !state.status.has(f.status)) return false;
+  if (state.app && appLabel(f) !== state.app) return false;
+  if (state.env && r.environment !== state.env) return false;
+  if (state.cluster && r.cluster !== state.cluster) return false;
+  if (state.kind && r.kind !== state.kind) return false;
+  if (state.q) {
+    var hay = [f.path, r.kind, r.name, r.namespace, r.apiVersion].join(' ').toLowerCase();
+    if (!state.q.split(/\s+/).every(function (w) { return hay.indexOf(w) >= 0; })) return false;
+  }
+  return true;
+}
+function applyFilters() {
+  var shown = 0;
+  files.forEach(function (f, i) { var ok = matches(f); document.getElementById('file-' + i).classList.toggle('hide', !ok); document.getElementById('nav-' + i).classList.toggle('hide', !ok); if (ok) shown++; });
+  document.querySelectorAll('.group').forEach(function (g) { g.classList.toggle('hide', !g.querySelector('.item:not(.hide)')); });
+  document.getElementById('count').textContent = shown === files.length ? plural(files.length, 'file') : shown + ' of ' + files.length + ' files';
+  var any = state.q || state.status.size || state.app || state.env || state.cluster || state.kind;
+  document.getElementById('clear').disabled = !any;
+}
+function clearFilters() {
+  state.q = ''; state.status.clear(); state.app = state.env = state.cluster = state.kind = '';
+  document.getElementById('q').value = '';
+  document.querySelectorAll('#status-seg button').forEach(function (b) { b.classList.remove('on'); });
+  ['app', 'env', 'cluster', 'kind'].forEach(function (id) { var s = document.getElementById(id); if (s) s.value = ''; });
+  applyFilters();
+}
+function goTo(i) {
+  var card = document.getElementById('file-' + i);
+  card.classList.remove('collapsed'); ensureBody(card);
+  card.scrollIntoView({block: 'start'}); setActive(i);
+}
+function setActive(i) {
+  if (state.active === i) return;
+  document.querySelectorAll('.item.active').forEach(function (e) { e.classList.remove('active'); });
+  var nav = document.getElementById('nav-' + i);
+  if (nav) { nav.classList.add('active'); nav.scrollIntoView({block: 'nearest'}); }
+  state.active = i;
+}
+function topHeight() { return document.querySelector('.top').offsetHeight; }
+function syncTop() { document.documentElement.style.setProperty('--top-h', topHeight() + 'px'); }
+function observe() {
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      var card = e.target;
+      if (e.isIntersecting) { visible.add(card); if (!card.classList.contains('collapsed')) ensureBody(card); } else visible.delete(card);
+    });
+    var best = null, bestTop = Infinity;
+    visible.forEach(function (c) { var t = Math.abs(c.getBoundingClientRect().top - topHeight()); if (t < bestTop) { bestTop = t; best = c; } });
+    if (best) setActive(+best.dataset.i);
+  }, {rootMargin: '600px 0px 600px 0px'});
+  document.querySelectorAll('.file').forEach(function (c) { io.observe(c); });
+}
+document.addEventListener('keydown', function (e) {
+  if (e.target.matches('input, select, textarea')) { if (e.key === 'Escape') e.target.blur(); return; }
+  if (e.key === '/') { e.preventDefault(); document.getElementById('q').focus(); return; }
+  if (e.key !== 'j' && e.key !== 'k') return;
+  var order = files.map(function (_, i) { return i; }).filter(function (i) { return !document.getElementById('file-' + i).classList.contains('hide'); });
+  if (!order.length) return;
+  var pos = order.indexOf(state.active);
+  goTo(e.key === 'j' ? order[Math.min(pos + 1, order.length - 1)] : order[Math.max(pos - 1, 0)]);
+});
+
+/* boot */
+buildTop();
+var layout = document.getElementById('layout');
+if (!files.length) {
+  append(layout, h('div', {class: 'empty'}, h('h2', {}, 'No differences'), h('p', {}, 'The rendered manifests are identical between ' + (meta.baseRef || 'base') + ' and ' + (meta.headRef || 'head') + '.')));
+} else {
+  append(layout, buildSidebar());
+  var main = h('main', {class: 'files'});
+  files.forEach(function (_, i) { append(main, buildFile(i)); });
+  append(layout, main);
+  applyFilters();
+  observe();
+}
+document.getElementById('footer').textContent = (meta.tool ? meta.tool + ' · ' : '') + 'Highlighted spans mark the part of a line that changed.';
+syncTop(); addEventListener('resize', syncTop);
+})();
+</script>
+</body>
+</html>

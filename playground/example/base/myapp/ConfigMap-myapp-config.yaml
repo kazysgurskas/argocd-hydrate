@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: myapp-config
+  namespace: myapp
+data:
+  app.conf: |
+    log_level=info
+    cache_size=128
+    workers=4
+    feature_new_ui=false
+  motd.txt: |
+    Welcome to myapp (staging).

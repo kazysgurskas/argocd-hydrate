@@ -26,3 +26,8 @@ go.work.sum
 
 # binaries
 bin/
+
+# playground output and private scenarios (see playground/README.md)
+playground/out/
+playground/cache/
+playground/local/

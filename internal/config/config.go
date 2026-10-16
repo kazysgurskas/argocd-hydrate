@@ -1,6 +1,6 @@
 package config
 
-// Configuration holds all application configuration
+// Configuration holds the hydrate command's settings.
 type Configuration struct {
 	// ApplicationsFile is the path to the file containing ArgoCD Application CRDs
 	ApplicationsFile string
@@ -15,19 +15,16 @@ type Configuration struct {
 	KubeVersion string
 }
 
-// Private configuration instance
+// DefaultKubeVersion is the Kubernetes version charts are rendered for unless
+// --kube-version says otherwise.
+const DefaultKubeVersion = "1.35.6"
+
 var instance *Configuration
 
 // GetConfig returns the current configuration, initializing it if needed
 func GetConfig() *Configuration {
 	if instance == nil {
-		// Initialize with default values
-		instance = &Configuration{
-			ApplicationsFile: "manifests/applications.yaml",
-			OutputDir:        "manifests",
-			ChartsDir:        "cache",
-			KubeVersion:      "1.35.6", // Default Kubernetes version
-		}
+		instance = NewConfig()
 	}
 	return instance
 }
@@ -43,6 +40,6 @@ func NewConfig() *Configuration {
 		ApplicationsFile: "manifests/applications.yaml",
 		OutputDir:        "manifests",
 		ChartsDir:        "cache",
-		KubeVersion:      "1.31.1", // Default Kubernetes version
+		KubeVersion:      DefaultKubeVersion,
 	}
 }

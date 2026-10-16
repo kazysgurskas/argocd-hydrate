@@ -1,0 +1,30 @@
+# Two ArgoCD Applications with directory sources, as the root chart of a
+# GitOps repo would render them. Paths are relative to playground/.
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: myapp.stage.cluster-1
+spec:
+  destination:
+    namespace: myapp
+  source:
+    repoURL: https://github.com/example/gitops
+    targetRevision: HEAD
+    path: example/head/myapp
+    directory:
+      recurse: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otherapp.stage.cluster-1
+spec:
+  destination:
+    namespace: otherapp
+  source:
+    repoURL: https://github.com/example/gitops
+    targetRevision: HEAD
+    path: example/head/otherapp
+    directory:
+      recurse: true
