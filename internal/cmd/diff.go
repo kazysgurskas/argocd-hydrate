@@ -100,7 +100,7 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 		return fmt.Errorf("write report: %w", err)
 	}
 
-	fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s: %d files changed (%d added, %d modified, %d deleted), +%d -%d\n",
+	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s: %d files changed (%d added, %d modified, %d deleted), +%d -%d\n",
 		o.output, len(result.Files), result.Added, result.Modified, result.Deleted, result.Additions, result.Deletions)
 	return nil
 }
