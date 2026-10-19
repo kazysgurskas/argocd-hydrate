@@ -26,3 +26,8 @@ go.work.sum
 
 # binaries
 bin/
+
+# smoke test output and private scenarios (see test/smoke/README.md)
+test/smoke/out/
+test/smoke/cache/
+test/smoke/local/

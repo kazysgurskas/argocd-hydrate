@@ -11,9 +11,9 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.Version={{.Env.VERSION}}
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.GitCommit={{.Env.GIT_COMMIT}}
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/cmd.getVersion.BuildDate={{.Env.BUILD_DATE}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.Version={{.Env.VERSION}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.GitCommit={{.Env.GIT_COMMIT}}
+      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.BuildDate={{.Env.BUILD_DATE}}
     main: ./cmd/argocd-hydrate/main.go
 
 dockers:
@@ -35,8 +35,8 @@ dockers:
       - "./"
     build_flag_templates:
       - "--pull"
-      - "--platform=linux/amd64"
-    goarch: amd64
+      - "--platform=linux/arm64"
+    goarch: arm64
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}-arm64"
     dockerfile: Dockerfile
