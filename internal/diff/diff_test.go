@@ -51,7 +51,7 @@ func TestCompare(t *testing.T) {
 		"web.prod.euw2/notes.txt":                "ignored but different",
 	})
 
-	r, err := Compare(base, head, Options{})
+	r, err := Compare(base, head, DefaultOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestCompareIdentical(t *testing.T) {
 	base, head := t.TempDir(), t.TempDir()
 	writeTree(t, base, map[string]string{"a/Kind/x.yaml": "kind: X\n"})
 	writeTree(t, head, map[string]string{"a/Kind/x.yaml": "kind: X\n"})
-	r, err := Compare(base, head, Options{})
+	r, err := Compare(base, head, DefaultOptions())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -138,19 +138,45 @@ func TestFullTextLimit(t *testing.T) {
 	base, head := t.TempDir(), t.TempDir()
 	writeTree(t, base, map[string]string{"a/Kind/x.yaml": "kind: X\na: 1\n"})
 	writeTree(t, head, map[string]string{"a/Kind/x.yaml": "kind: X\na: 2\n"})
-	r, err := Compare(base, head, Options{FullTextLimit: -1})
+	r, err := Compare(base, head, Options{Context: DefaultContext, FullTextLimit: 0})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if r.Files[0].BaseText != nil {
-		t.Error("full text kept despite a negative limit")
+		t.Error("full text kept despite a zero limit")
 	}
-	r, err = Compare(base, head, Options{FullTextLimit: 1})
+	r, err = Compare(base, head, Options{Context: DefaultContext, FullTextLimit: 1})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if r.Files[0].BaseText != nil {
 		t.Error("full text kept for a file above the limit")
+	}
+	r, err = Compare(base, head, Options{Context: DefaultContext, FullTextLimit: -1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if r.Files[0].BaseText == nil {
+		t.Error("a negative limit should mean the default, which keeps a two-line file")
+	}
+}
+
+func TestZeroContext(t *testing.T) {
+	base, head := t.TempDir(), t.TempDir()
+	writeTree(t, base, map[string]string{"a/Kind/x.yaml": "kind: X\na: 1\nb: 2\nc: 3\n"})
+	writeTree(t, head, map[string]string{"a/Kind/x.yaml": "kind: X\na: 1\nb: 20\nc: 3\n"})
+	r, err := Compare(base, head, Options{Context: 0})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hk := r.Files[0].Hunks[0]
+	for _, l := range hk.Lines {
+		if l.Type == LineContext {
+			t.Fatalf("context line %q in a zero-context diff", l.Text)
+		}
+	}
+	if hk.BaseStart != 3 || hk.BaseLines != 1 || hk.HeadStart != 3 || hk.HeadLines != 1 {
+		t.Errorf("hunk = %+v", hk)
 	}
 }
 
@@ -164,6 +190,9 @@ func TestHighlightPairs(t *testing.T) {
 		{"abc", "xyz", nil, nil},   // nothing in common
 		{"same", "same", nil, nil}, // nothing changed
 		{"key: a", "key: ab", []int{6, 6}, []int{6, 7}},
+		// Offsets count code points: "café" is four of them, not five bytes.
+		{"description: café au lait", "description: café au thé", []int{21, 25}, []int{21, 24}},
+		{"note: 🚀 v1", "note: 🚀 v2", []int{9, 10}, []int{9, 10}},
 	}
 	for _, tt := range tests {
 		del := []Line{{Text: tt.a}}

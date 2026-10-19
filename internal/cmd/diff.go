@@ -30,8 +30,11 @@ func newDiffCommand() *cobra.Command {
 write a self-contained HTML report of what changed. Each input is a directory
 or a zip archive of one.
 
-Pull request details are optional and default to the GITHUB_* variables that
-GitHub Actions sets, so inside a workflow only --base and --head are needed.`,
+Pull request details are optional. Inside GitHub Actions the repository, base
+and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
+and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
+from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
+needed there.`,
 		Example: `  argocd-hydrate diff --base base-manifests --head head-manifests
   argocd-hydrate diff --base base.zip --head head.zip --output diff.html \
       --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
@@ -49,7 +52,7 @@ GitHub Actions sets, so inside a workflow only --base and --head are needed.`,
 		"Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never)")
 	f.StringVar(&o.meta.Title, "title", "", "Report title (default: the pull request, or the input paths)")
 	f.StringVar(&o.meta.Repo, "repo", envOr("GITHUB_REPOSITORY", ""), "Repository as owner/name")
-	f.IntVar(&o.meta.PRNumber, "pr-number", envInt("GITHUB_PR_NUMBER"), "Pull request number")
+	f.IntVar(&o.meta.PRNumber, "pr-number", prNumberFromEnv(), "Pull request number")
 	f.StringVar(&o.meta.PRTitle, "pr-title", "", "Pull request title")
 	f.StringVar(&o.meta.BaseRef, "base-ref", envOr("GITHUB_BASE_REF", ""), "Base branch or ref")
 	f.StringVar(&o.meta.HeadRef, "head-ref", envOr("GITHUB_HEAD_REF", ""), "Head branch or ref")
@@ -112,7 +115,28 @@ func envOr(name, fallback string) string {
 	return fallback
 }
 
-func envInt(name string) int {
-	n, _ := strconv.Atoi(os.Getenv(name))
+// prNumberFromEnv is the pull request number GitHub Actions implies:
+// GITHUB_PR_NUMBER when a workflow exports it, otherwise the number in a
+// GITHUB_REF of the form refs/pull/<n>/merge. Zero when neither applies.
+func prNumberFromEnv() int {
+	if n, err := strconv.Atoi(os.Getenv("GITHUB_PR_NUMBER")); err == nil && n > 0 {
+		return n
+	}
+	return prNumberFromRef(os.Getenv("GITHUB_REF"))
+}
+
+func prNumberFromRef(ref string) int {
+	rest, ok := strings.CutPrefix(ref, "refs/pull/")
+	if !ok {
+		return 0
+	}
+	num, _, ok := strings.Cut(rest, "/")
+	if !ok {
+		return 0
+	}
+	n, err := strconv.Atoi(num)
+	if err != nil || n <= 0 {
+		return 0
+	}
 	return n
 }

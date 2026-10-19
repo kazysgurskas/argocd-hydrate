@@ -4,6 +4,7 @@ metadata:
   name: myapp-config
   namespace: myapp
 data:
+  greeting: "Hello, world — v2"
   app.conf: |
     log_level=debug
     cache_size=256

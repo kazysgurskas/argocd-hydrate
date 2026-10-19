@@ -58,8 +58,10 @@ argocd-hydrate diff --base base-manifests --head head-manifests --output diff.ht
   --base-ref master --head-ref feat/nginx --author alice
 ```
 
-In GitHub Actions, `--repo`, `--pr-number`, `--base-ref` and `--head-ref`
-default to the `GITHUB_*` variables, so only `--base` and `--head` are needed.
+In GitHub Actions, `--repo`, `--base-ref` and `--head-ref` default to
+`GITHUB_REPOSITORY`, `GITHUB_BASE_REF` and `GITHUB_HEAD_REF`, and `--pr-number`
+to the number in `GITHUB_REF` on `pull_request` events (or to `GITHUB_PR_NUMBER`
+if your workflow exports it), so only `--base` and `--head` are needed.
 `--context` sets the unchanged lines kept around a change (default 3) and
 `--full-text-limit` the largest modified file whose whole text is embedded so
 context can be expanded in the viewer (default 2000 lines).
@@ -68,11 +70,11 @@ The report embeds the diff as JSON and renders it in the browser, so a page
 with hundreds of changed manifests stays small and only draws what is on
 screen. Secrets are already redacted by the hydrate step.
 
-## Playground
+## Smoke test
 
-`make playground` hydrates the example under [`playground/`](playground/) for a
-base and a head commit and diffs them into `playground/out/example/diff.html`.
-See [playground/README.md](playground/README.md) for using it with your own
+`make smoke` hydrates the example under [`test/smoke/`](test/smoke/) for a base
+and a head commit and diffs them into `test/smoke/out/example/diff.html`. See
+[test/smoke/README.md](test/smoke/README.md) for using it with your own
 scenarios.
 
 ## Local Development and Testing

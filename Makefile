@@ -23,12 +23,8 @@ clean:
 
 .PHONY: docker
 docker:
-	docker build -t argocd-hydrate:$(VERSION) \
-		--build-arg VERSION=$(VERSION) \
-		--build-arg GIT_COMMIT=$(GIT_COMMIT) \
-		--build-arg BUILD_DATE=$(BUILD_DATE) \
-		.
+	docker build -t argocd-hydrate:$(VERSION) .
 
-.PHONY: playground
-playground: build ## Hydrate and diff the example in playground/
-	./playground/run.sh
+.PHONY: smoke
+smoke: build ## Hydrate and diff the example in test/smoke/
+	./test/smoke/run.sh

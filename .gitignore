@@ -27,7 +27,7 @@ go.work.sum
 # binaries
 bin/
 
-# playground output and private scenarios (see playground/README.md)
-playground/out/
-playground/cache/
-playground/local/
+# smoke test output and private scenarios (see test/smoke/README.md)
+test/smoke/out/
+test/smoke/cache/
+test/smoke/local/

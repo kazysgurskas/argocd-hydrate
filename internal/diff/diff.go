@@ -32,9 +32,11 @@ const (
 )
 
 // Line is one line of a hunk. Base and Head are 1-based line numbers in the
-// respective file, 0 when the line does not exist there. Highlight marks the
-// byte range of Text that differs from the paired line on the other side, for
-// modified lines whose beginning and end are unchanged.
+// respective file, 0 when the line does not exist there. Highlight is the
+// [start, end) range of Text, counted in Unicode code points, that differs
+// from the paired line on the other side, for modified lines whose beginning
+// and end are unchanged. Code points, not bytes, so that a viewer in any
+// language can slice the text by character.
 type Line struct {
 	Type      LineType `json:"t"`
 	Base      int      `json:"b,omitempty"`
@@ -81,14 +83,15 @@ type Result struct {
 	Modified  int    `json:"modified"`
 }
 
-// Options tune a comparison.
+// Options tune a comparison. The zero value asks for no context and no full
+// text; DefaultOptions is the usual starting point.
 type Options struct {
 	// Context is the number of unchanged lines kept around each change.
-	// Zero means DefaultContext.
+	// Negative means DefaultContext.
 	Context int
 	// FullTextLimit is the largest file, in lines, whose full text is kept
-	// on modified files. Zero means DefaultFullTextLimit; negative means
-	// never.
+	// on modified files. Zero means never; negative means
+	// DefaultFullTextLimit.
 	FullTextLimit int
 }
 
@@ -97,16 +100,25 @@ const (
 	DefaultFullTextLimit = 2000
 )
 
+// DefaultOptions returns the options the command line uses by default.
+func DefaultOptions() Options {
+	return Options{Context: DefaultContext, FullTextLimit: DefaultFullTextLimit}
+}
+
 // Compare diffs the manifest trees at baseDir and headDir. Only .yaml and
 // .yml files take part; everything else is ignored. Files are listed in
 // path order.
+//
+// Both trees are read into memory whole, and modified files up to
+// Options.FullTextLimit lines keep their full text in the result; manifest
+// trees are small enough for that, and the limit is the lever if one is not.
 func Compare(baseDir, headDir string, opts Options) (*Result, error) {
 	context := opts.Context
-	if context <= 0 {
+	if context < 0 {
 		context = DefaultContext
 	}
 	fullTextLimit := opts.FullTextLimit
-	if fullTextLimit == 0 {
+	if fullTextLimit < 0 {
 		fullTextLimit = DefaultFullTextLimit
 	}
 
@@ -303,15 +315,15 @@ func addedLines(head []string, from, to int) []Line {
 
 // highlightPairs marks, on each deleted line and the added line at the same
 // position in the replacement, the span that changed: what is left once the
-// common prefix and suffix are removed. Lines with nothing in common, or
-// identical lines, get no highlight.
+// common prefix and suffix are removed. Offsets are in code points. Lines
+// with nothing in common, or identical lines, get no highlight.
 func highlightPairs(del, add []Line) {
 	n := len(del)
 	if len(add) < n {
 		n = len(add)
 	}
 	for i := 0; i < n; i++ {
-		a, b := del[i].Text, add[i].Text
+		a, b := []rune(del[i].Text), []rune(add[i].Text)
 		prefix := commonPrefix(a, b)
 		suffix := commonSuffix(a[prefix:], b[prefix:])
 		if prefix == 0 && suffix == 0 {
@@ -325,7 +337,7 @@ func highlightPairs(del, add []Line) {
 	}
 }
 
-func commonPrefix(a, b string) int {
+func commonPrefix(a, b []rune) int {
 	n := 0
 	for n < len(a) && n < len(b) && a[n] == b[n] {
 		n++
@@ -333,7 +345,7 @@ func commonPrefix(a, b string) int {
 	return n
 }
 
-func commonSuffix(a, b string) int {
+func commonSuffix(a, b []rune) int {
 	n := 0
 	for n < len(a) && n < len(b) && a[len(a)-1-n] == b[len(b)-1-n] {
 		n++

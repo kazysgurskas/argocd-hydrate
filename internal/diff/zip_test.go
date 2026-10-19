@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"testing"
 )
 
@@ -57,5 +58,25 @@ func TestExtractZipRefusesEscape(t *testing.T) {
 
 	if err := extractZip(archive, t.TempDir()); err == nil {
 		t.Error("an entry escaping the root must be refused")
+	}
+}
+
+func TestExtractZipBudget(t *testing.T) {
+	archive := filepath.Join(t.TempDir(), "many.zip")
+	out, err := os.Create(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := zip.NewWriter(out)
+	for i := 0; i <= maxZipEntries; i++ {
+		if _, err := w.Create("a/" + strconv.Itoa(i) + ".yaml"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	_ = w.Close()
+	_ = out.Close()
+
+	if err := extractZip(archive, t.TempDir()); err == nil {
+		t.Error("an archive over the entry budget must be refused")
 	}
 }
