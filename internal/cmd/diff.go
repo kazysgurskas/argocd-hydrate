@@ -16,6 +16,7 @@ import (
 
 type diffOptions struct {
 	base, head, output string
+	summary            string
 	context            int
 	fullTextLimit      int
 	meta               report.Meta
@@ -36,6 +37,7 @@ and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
 from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
 needed there.`,
 		Example: `  argocd-hydrate diff --base base-manifests --head head-manifests
+  argocd-hydrate diff --base base-manifests --head head-manifests --summary diff.md
   argocd-hydrate diff --base base.zip --head head.zip --output diff.html \
       --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
       --base-ref master --head-ref feat/nginx --author alice`,
@@ -47,6 +49,7 @@ needed there.`,
 	f.StringVar(&o.base, "base", "", "Base manifest tree: a directory or a .zip (required)")
 	f.StringVar(&o.head, "head", "", "Head manifest tree: a directory or a .zip (required)")
 	f.StringVar(&o.output, "output", "diff.html", "Output HTML file")
+	f.StringVar(&o.summary, "summary", "", "Also write a Markdown summary, for a pull request comment, to this file")
 	f.IntVar(&o.context, "context", diff.DefaultContext, "Unchanged lines kept around each change")
 	f.IntVar(&o.fullTextLimit, "full-text-limit", diff.DefaultFullTextLimit,
 		"Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never)")
@@ -102,9 +105,29 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	if err := report.Render(out, result, o.meta); err != nil {
 		return fmt.Errorf("write report: %w", err)
 	}
+	if o.summary != "" {
+		if err := writeSummary(o.summary, result); err != nil {
+			return err
+		}
+	}
 
 	_, _ = fmt.Fprintf(cmd.OutOrStdout(), "Wrote %s: %d files changed (%d added, %d modified, %d deleted), +%d -%d\n",
 		o.output, len(result.Files), result.Added, result.Modified, result.Deleted, result.Additions, result.Deletions)
+	return nil
+}
+
+func writeSummary(path string, result *diff.Result) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("create %s: %w", path, err)
+	}
+	if err := report.WriteMarkdown(f, result, report.MarkdownOptions{}); err != nil {
+		_ = f.Close()
+		return fmt.Errorf("write summary: %w", err)
+	}
+	if err := f.Close(); err != nil {
+		return fmt.Errorf("close %s: %w", path, err)
+	}
 	return nil
 }
 
