@@ -70,6 +70,14 @@ The report embeds the diff as JSON and renders it in the browser, so a page
 with hundreds of changed manifests stays small and only draws what is on
 screen. Secrets are already redacted by the hydrate step.
 
+`--summary <file>` also writes a Markdown summary for a pull request comment:
+a totals line ("11 manifests changed: 4 added, 6 modified, 1 deleted"), a
+"worth a look" list of every deleted resource and every added or modified
+`Secret`, `Namespace`, `CustomResourceDefinition`, `HTTPRoute` and
+`PodDisruptionBudget`, and a table with one row per application, environment
+and cluster (collapsed when it has more than eight rows). A pull request that
+renders to no change says so in one line.
+
 ## Smoke test
 
 `make smoke` hydrates the example under [`test/smoke/`](test/smoke/) for a base
