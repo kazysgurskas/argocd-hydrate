@@ -7,18 +7,18 @@ import (
 	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
 )
 
-func file(app, env, cluster, ns, kind, name string, status diff.Status, add, del int) diff.File {
-	path := app + "." + env + "." + cluster + "/"
-	if ns != "" {
-		path += ns + "/"
+func file(app, environment, cluster, namespace, kind, name string, status diff.Status, add, del int) diff.File {
+	path := app + "." + environment + "." + cluster + "/"
+	if namespace != "" {
+		path += namespace + "/"
 	}
 	path += kind + "/" + name + ".yaml"
 	return diff.File{
 		Path:   path,
 		Status: status,
 		Resource: &diff.Resource{
-			App: app, Environment: env, Cluster: cluster,
-			Namespace: ns, Kind: kind, Name: name,
+			App: app, Environment: environment, Cluster: cluster,
+			Namespace: namespace, Kind: kind, Name: name,
 		},
 		Additions: add,
 		Deletions: del,

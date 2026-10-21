@@ -16,32 +16,50 @@ This tool hydrates ArgoCD Applications into Kubernetes manifests based on ArgoCD
 ## Usage
 
 ```bash
-~ argocd-hydrate  --help
+~ argocd-hydrate --help
 ArgoCD Hydrate - Render ArgoCD Applications into Kubernetes manifests
 
 This tool takes ArgoCD Application custom resources and renders Kubernetes manifests. It supports applications that use Helm charts
-and directory-based sources.
+and directory-based sources. "argocd-hydrate diff" compares two rendered trees and writes an HTML report.
 
 Usage:
   argocd-hydrate [flags]
+  argocd-hydrate [command]
 
 Examples:
-  # Use default values
+  # Hydrate with the default values
   argocd-hydrate
 
   # Specify custom applications file and output directory
   argocd-hydrate --applications=apps/applications.yaml --output=rendered
 
-  # Specify custom charts directory
-  argocd-hydrate --charts-dir=/path/to/charts
+  # Compare two rendered trees (directories or zip files) into an HTML report
+  argocd-hydrate diff --base base-manifests --head head-manifests --output diff.html
+
+Available Commands:
+  completion  Generate the autocompletion script for the specified shell
+  diff        Compare two rendered manifest trees and write an HTML report
+  help        Help about any command
+  hydrate     Render ArgoCD applications into Kubernetes manifests
 
 Flags:
       --applications string   Path to the file containing ArgoCD Application CRDs (default "manifests/applications.yaml")
-      --charts-dir string     Directory for storing downloaded Helm charts (default "charts")
+      --charts-dir string     Directory for storing downloaded Helm charts (default "cache")
   -h, --help                  help for argocd-hydrate
+      --kube-version string   Kubernetes version to use for rendering Helm charts (default "1.35.6")
       --output string         Output directory for the rendered manifests (default "manifests")
   -v, --version               version for argocd-hydrate
+
+Use "argocd-hydrate [command] --help" for more information about a command.
 ```
+
+Running with no subcommand hydrates, as earlier versions did. Each
+application is written to `<output>/<application>/<namespace>/<Kind>/<name>.yaml`
+(`<output>/<application>/<Kind>/<name>.yaml` for cluster-scoped objects), with
+Secret values redacted. Progress is logged to stderr; an error is reported
+once and exits with status 1. Charts are rendered for `--kube-version` the way
+`helm template --kube-version` renders them, so a chart whose `kubeVersion`
+constraint excludes it fails with a message that says so.
 
 ## Diffing two renders
 

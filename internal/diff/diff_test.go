@@ -195,12 +195,14 @@ func TestHighlightPairs(t *testing.T) {
 		{"note: 🚀 v1", "note: 🚀 v2", []int{9, 10}, []int{9, 10}},
 	}
 	for _, tt := range tests {
-		del := []Line{{Text: tt.a}}
-		add := []Line{{Text: tt.b}}
-		highlightPairs(del, add)
-		if !slices.Equal(del[0].Highlight, tt.wantA) || !slices.Equal(add[0].Highlight, tt.wantB) {
-			t.Errorf("highlight(%q, %q) = %v / %v, want %v / %v", tt.a, tt.b, del[0].Highlight, add[0].Highlight, tt.wantA, tt.wantB)
-		}
+		t.Run(tt.a+" -> "+tt.b, func(t *testing.T) {
+			del := []Line{{Text: tt.a}}
+			add := []Line{{Text: tt.b}}
+			highlightPairs(del, add)
+			if !slices.Equal(del[0].Highlight, tt.wantA) || !slices.Equal(add[0].Highlight, tt.wantB) {
+				t.Errorf("highlight = %v / %v, want %v / %v", del[0].Highlight, add[0].Highlight, tt.wantA, tt.wantB)
+			}
+		})
 	}
 }
 
@@ -217,10 +219,12 @@ func TestResourceFor(t *testing.T) {
 		{"odd.yaml", "kind: Thing\napiVersion: x/v1\nmetadata:\n  name: t\n", Resource{APIVersion: "x/v1", Kind: "Thing", Name: "t"}},
 	}
 	for _, tt := range tests {
-		got := resourceFor(tt.path, tt.content)
-		if got == nil || *got != tt.want {
-			t.Errorf("resourceFor(%q) = %+v, want %+v", tt.path, got, tt.want)
-		}
+		t.Run(tt.path, func(t *testing.T) {
+			got := resourceFor(tt.path, tt.content)
+			if got == nil || *got != tt.want {
+				t.Errorf("resourceFor(%q) = %+v, want %+v", tt.path, got, tt.want)
+			}
+		})
 	}
 	if resourceFor("x.yaml", "") != nil {
 		t.Error("expected nil for a path with no structure and no body")

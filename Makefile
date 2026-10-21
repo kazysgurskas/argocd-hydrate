@@ -13,9 +13,18 @@ build:
 install:
 	go install -ldflags "$(LDFLAGS)" ./cmd/argocd-hydrate
 
+.PHONY: fmt
+fmt:
+	gofmt -w .
+
+.PHONY: lint
+lint:
+	go vet ./...
+	golangci-lint run ./...
+
 .PHONY: test
 test:
-	go test -v ./...
+	go test -race ./...
 
 .PHONY: clean
 clean:

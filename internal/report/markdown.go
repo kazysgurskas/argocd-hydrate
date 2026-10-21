@@ -17,6 +17,8 @@ type MarkdownOptions struct {
 	CollapseAfter int
 }
 
+// DefaultCollapseAfter is the CollapseAfter used when MarkdownOptions leaves
+// it zero.
 const DefaultCollapseAfter = 8
 
 // WriteMarkdown writes a GitHub-flavoured Markdown summary of result to w,
@@ -57,7 +59,7 @@ func WriteMarkdown(w io.Writer, result *diff.Result, opts MarkdownOptions) error
 	b.WriteString("|---|---|---|---:|---:|---:|---:|\n")
 	for _, r := range rows {
 		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | +%d / −%d |\n",
-			cell(r.app), cell(r.env), cell(r.cluster),
+			cell(r.app), cell(r.environment), cell(r.cluster),
 			blankZero(r.added), blankZero(r.modified), blankZero(r.deleted),
 			r.additions, r.deletions)
 	}
@@ -70,16 +72,16 @@ func WriteMarkdown(w io.Writer, result *diff.Result, opts MarkdownOptions) error
 }
 
 type appRow struct {
-	app, env, cluster        string
-	added, modified, deleted int
-	additions, deletions     int
+	app, environment, cluster string
+	added, modified, deleted  int
+	additions, deletions      int
 }
 
 // appRows aggregates files per application, environment and cluster, in
 // that order. Files whose path does not follow the hydrate layout fall under
 // their first path segment.
 func appRows(result *diff.Result) []appRow {
-	type key struct{ app, env, cluster string }
+	type key struct{ app, environment, cluster string }
 	byKey := map[key]*appRow{}
 	for _, f := range result.Files {
 		k := key{}
@@ -91,7 +93,7 @@ func appRows(result *diff.Result) []appRow {
 		}
 		r := byKey[k]
 		if r == nil {
-			r = &appRow{app: k.app, env: k.env, cluster: k.cluster}
+			r = &appRow{app: k.app, environment: k.environment, cluster: k.cluster}
 			byKey[k] = r
 		}
 		switch f.Status {
@@ -114,8 +116,8 @@ func appRows(result *diff.Result) []appRow {
 		if a.app != b.app {
 			return a.app < b.app
 		}
-		if a.env != b.env {
-			return a.env < b.env
+		if a.environment != b.environment {
+			return a.environment < b.environment
 		}
 		return a.cluster < b.cluster
 	})

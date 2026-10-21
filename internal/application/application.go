@@ -1,14 +1,18 @@
+// Package application reads ArgoCD Application resources and exposes the
+// parts of them that hydration needs.
 package application
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
 
-// Application represents the ArgoCD Application CRD
+// Application is the subset of an ArgoCD Application that hydration reads.
 type Application struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
@@ -24,102 +28,95 @@ type Application struct {
 	} `yaml:"spec"`
 }
 
-// Source represents a source configuration in an ArgoCD Application
+// Source is one source of an Application: a Helm chart, a directory of
+// manifests, or a repository that only lends its files to other sources.
 type Source struct {
-	RepoURL        string          `yaml:"repoURL"`
-	Chart          string          `yaml:"chart,omitempty"`
-	TargetRevision string          `yaml:"targetRevision"`
-	Path           string          `yaml:"path,omitempty"`
-	Ref            string          `yaml:"ref,omitempty"`
-	Helm           HelmSource      `yaml:"helm,omitempty"`
+	RepoURL        string           `yaml:"repoURL"`
+	Chart          string           `yaml:"chart,omitempty"`
+	TargetRevision string           `yaml:"targetRevision"`
+	Path           string           `yaml:"path,omitempty"`
+	Ref            string           `yaml:"ref,omitempty"`
+	Helm           HelmSource       `yaml:"helm,omitempty"`
 	Directory      *DirectorySource `yaml:"directory,omitempty"`
 }
 
-// HelmSource represents Helm-specific configuration
+// HelmSource holds the Helm settings of a source.
 type HelmSource struct {
 	ReleaseName string   `yaml:"releaseName,omitempty"`
 	ValueFiles  []string `yaml:"valueFiles,omitempty"`
 	Values      string   `yaml:"values,omitempty"`
 }
 
-// DirectorySource represents directory source settings
+// DirectorySource holds the directory settings of a source.
 type DirectorySource struct {
 	Recurse bool `yaml:"recurse,omitempty"`
 }
 
-// LoadApplications loads and parses ArgoCD Application CRDs from a file
-func LoadApplications(path string) ([]Application, error) {
-	content, err := os.ReadFile(path)
+// Load reads every ArgoCD Application in the YAML stream at path. Other
+// documents in the stream are ignored.
+func Load(path string) ([]Application, error) {
+	f, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("applications file %s not found: %w", path, err)
+		return nil, err
 	}
+	defer func() { _ = f.Close() }()
 
-	// Split the file by YAML document separator
-	documents := strings.Split(string(content), "---")
-	applications := []Application{}
-
-	for _, doc := range documents {
-		if strings.TrimSpace(doc) == "" {
-			continue
+	var applications []Application
+	decoder := yaml.NewDecoder(f)
+	for {
+		var app Application
+		err := decoder.Decode(&app)
+		if errors.Is(err, io.EOF) {
+			return applications, nil
 		}
-
-		var manifest Application
-		if err := yaml.Unmarshal([]byte(doc), &manifest); err != nil {
-			return nil, fmt.Errorf("failed to parse %s: %w", path, err)
+		if err != nil {
+			return nil, fmt.Errorf("parse %s: %w", path, err)
 		}
-
-		if manifest.Kind == "Application" && strings.HasPrefix(manifest.APIVersion, "argoproj.io/") {
-			applications = append(applications, manifest)
+		if app.Kind == "Application" && strings.HasPrefix(app.APIVersion, "argoproj.io/") {
+			applications = append(applications, app)
 		}
 	}
-
-	return applications, nil
 }
 
-// GetEffectiveNamespace returns the effective namespace for the application
-func (app *Application) GetEffectiveNamespace() string {
-	namespace := app.Spec.Destination.Namespace
-	if namespace == "" {
-		namespace = app.Metadata.Name
+// Namespace is the destination namespace, which defaults to the
+// application's name when the Application sets none.
+func (app *Application) Namespace() string {
+	if app.Spec.Destination.Namespace != "" {
+		return app.Spec.Destination.Namespace
 	}
-	return namespace
+	return app.Metadata.Name
 }
 
-// GetSources returns all sources for the application
-func (app *Application) GetSources() []*Source {
-	var sources []*Source
+// Sources returns the application's sources, whether it declares one or
+// many.
+func (app *Application) Sources() []*Source {
 	if app.Spec.Source != nil {
-		sources = append(sources, app.Spec.Source)
-	} else {
-		sources = app.Spec.Sources
+		return []*Source{app.Spec.Source}
 	}
-	return sources
+	return app.Spec.Sources
 }
 
-// IsValueSource returns true if this source is only used for reference values
-func (s *Source) IsValueSource() bool {
+// IsValuesRef reports whether the source only lends its files to other
+// sources under $values and renders nothing itself.
+func (s *Source) IsValuesRef() bool {
 	return s.Ref == "values"
 }
 
-// IsHelmChart returns true if this source is a Helm chart
-func (s *Source) IsHelmChart() bool {
+// IsChart reports whether the source is a Helm chart.
+func (s *Source) IsChart() bool {
 	return s.Chart != ""
 }
 
-// IsDirectory returns true if this source is a directory
+// IsDirectory reports whether the source is a directory of manifests.
 func (s *Source) IsDirectory() bool {
 	return s.Directory != nil
 }
 
-// GetEffectiveReleaseName returns the release name to use, defaulting to the application name if not specified
-func (s *Source) GetEffectiveReleaseName(defaultName string) string {
+// ReleaseName is the Helm release name, which defaults to fallback when the
+// source sets none.
+func (s *Source) ReleaseName(fallback string) string {
 	if s.Helm.ReleaseName != "" {
 		return s.Helm.ReleaseName
 	}
-	return defaultName
-}
-
-// ShouldRecurseDirectory returns true if the directory should be recursively processed
-func (s *Source) ShouldRecurseDirectory() bool {
-	return s.Directory != nil && s.Directory.Recurse
+	return fallback
 }
