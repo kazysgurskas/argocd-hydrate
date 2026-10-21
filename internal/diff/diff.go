@@ -16,6 +16,7 @@ import (
 // Status is what happened to a file between base and head.
 type Status string
 
+// The statuses a File can have.
 const (
 	StatusAdded    Status = "added"
 	StatusDeleted  Status = "deleted"
@@ -25,6 +26,7 @@ const (
 // LineType is the role of a line within a hunk.
 type LineType string
 
+// The roles a Line can have.
 const (
 	LineContext LineType = "ctx"
 	LineAdded   LineType = "add"
@@ -95,6 +97,7 @@ type Options struct {
 	FullTextLimit int
 }
 
+// Defaults for Options, used by the command line.
 const (
 	DefaultContext       = 3
 	DefaultFullTextLimit = 2000

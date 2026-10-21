@@ -8,9 +8,8 @@ import (
 )
 
 func main() {
-	rootCmd := cmd.New()
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error executing command: %s\n", err.Error())
+	if err := cmd.New().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "argocd-hydrate:", err)
 		os.Exit(1)
 	}
 }

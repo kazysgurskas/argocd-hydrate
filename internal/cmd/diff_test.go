@@ -12,9 +12,11 @@ func TestPRNumberFromRef(t *testing.T) {
 		"":                   0,
 	}
 	for ref, want := range tests {
-		if got := prNumberFromRef(ref); got != want {
-			t.Errorf("prNumberFromRef(%q) = %d, want %d", ref, got, want)
-		}
+		t.Run(ref, func(t *testing.T) {
+			if got := prNumberFromRef(ref); got != want {
+				t.Errorf("prNumberFromRef(%q) = %d, want %d", ref, got, want)
+			}
+		})
 	}
 }
 

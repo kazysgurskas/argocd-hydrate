@@ -1,177 +1,49 @@
+// Package hydrate renders ArgoCD Applications into the Kubernetes manifests
+// they would deploy: Helm chart sources are pulled and templated, directory
+// sources are read as they are, and Secret values are redacted.
 package hydrate
 
 import (
 	"fmt"
-	"regexp"
-	"strings"
-
-	"gopkg.in/yaml.v3"
 
 	"github.com/kazysgurskas/argocd-hydrate/internal/application"
-	"github.com/kazysgurskas/argocd-hydrate/internal/render"
-	"github.com/kazysgurskas/argocd-hydrate/pkg/util"
 )
 
-// ManifestInfo represents a single Kubernetes manifest
-type ManifestInfo struct {
-	Kind      string
-	Name      string
-	Namespace string
-	Content   string
+// Options tune a render.
+type Options struct {
+	// ChartsDir is where pulled charts are kept between runs.
+	ChartsDir string
+	// KubeVersion is the Kubernetes version charts are rendered for.
+	KubeVersion string
 }
 
-// HydrateFromApplication hydrates ArgoCD application into Kubernetes manifests
-func HydrateFromApplication(app application.Application) ([]ManifestInfo, error) {
-	var allManifests []ManifestInfo
-
-	// Extract key information from the Application CRD
-	name := app.Metadata.Name
-	namespace := app.GetEffectiveNamespace()
-
-	// Get all sources for the application
-	sources := app.GetSources()
-
-	for _, source := range sources {
-		// Skip sources that are just for reference values
-		if source.IsValueSource() {
-			continue
-		}
-
-		var sourceManifestsStr string
+// Render renders every source of app and returns the manifests in source
+// order. A source that only lends values to the others (ref: values)
+// renders nothing.
+func Render(app application.Application, opts Options) ([]Manifest, error) {
+	namespace := app.Namespace()
+	var manifests []Manifest
+	for _, source := range app.Sources() {
+		var stream string
 		var err error
-
-		if source.IsHelmChart() {
-			sourceManifestsStr, err = render.ProcessHelmChart(source, name, namespace)
-		} else if source.IsDirectory() {
-			sourceManifestsStr, err = render.ProcessDirectory(source)
-		} else {
-			// Dump the source for debugging
-			sourceYaml, _ := yaml.Marshal(source)
-			fmt.Printf("Unsupported source type for application %s. Source details:\n%s\n", name, string(sourceYaml))
-			return nil, fmt.Errorf("unsupported source type for application %s", name)
+		switch {
+		case source.IsValuesRef():
+			continue
+		case source.IsChart():
+			stream, err = renderChart(source, source.ReleaseName(app.Metadata.Name), namespace, opts)
+		case source.IsDirectory():
+			stream, err = renderDirectory(source)
+		default:
+			return nil, fmt.Errorf("source %s sets neither chart nor directory", source.RepoURL)
 		}
-
 		if err != nil {
 			return nil, err
 		}
-
-		if sourceManifestsStr != "" {
-			// Parse the manifests into individual documents
-			manifests, err := parseManifests(sourceManifestsStr)
-			if err != nil {
-				return nil, fmt.Errorf("error parsing manifests for application %s: %w", name, err)
-			}
-			allManifests = append(allManifests, manifests...)
-		}
-	}
-
-	if len(allManifests) == 0 {
-		fmt.Printf("WARNING: No manifests generated for application %s\n", name)
-	}
-
-	return allManifests, nil
-}
-
-// parseManifests splits a multi-document YAML string into individual ManifestInfo objects
-func parseManifests(yamlContent string) ([]ManifestInfo, error) {
-	re := regexp.MustCompile(`(?m)^---`)
-	docs := re.Split(yamlContent, -1)
-	var manifests []ManifestInfo
-
-	for _, doc := range docs {
-		doc = strings.TrimSpace(doc)
-		if doc == "" {
-			continue
-		}
-
-		// Parse the YAML to extract kind and name
-		var obj map[string]interface{}
-		err := yaml.Unmarshal([]byte(doc), &obj)
+		parsed, err := parseManifests(stream)
 		if err != nil {
-			return nil, fmt.Errorf("error parsing YAML document: %w", err)
+			return nil, err
 		}
-
-		kind, ok := util.GetNestedString(obj, "kind")
-		if !ok || kind == "" {
-			// Skip documents without a kind
-			continue
-		}
-
-		// Get the name from metadata
-		metadata, ok := obj["metadata"].(map[string]interface{})
-		if !ok {
-			continue
-		}
-
-		name, ok := metadata["name"].(string)
-		if !ok || name == "" {
-			// Try to use generateName if name is not present
-			generateName, ok := metadata["generateName"].(string)
-			if !ok || generateName == "" {
-				// Skip documents without a name or generateName
-				continue
-			}
-			name = generateName + "generated"
-		}
-
-		// Extract namespace from metadata (may be empty for cluster-scoped resources)
-		namespace, ok := metadata["namespace"].(string)
-		if !ok {
-			// Namespace might not be present for cluster-scoped resources
-			namespace = ""
-		}
-
-		// Obfuscate Secret data if this is a Secret
-		if kind == "Secret" {
-			obj = obfuscateSecretData(obj)
-			// Re-marshal the obfuscated YAML
-			obfuscatedYaml, err := yaml.Marshal(obj)
-			if err != nil {
-				return nil, fmt.Errorf("error marshaling obfuscated Secret: %w", err)
-			}
-			doc = strings.TrimSpace(string(obfuscatedYaml))
-		}
-
-		// Add document separator back to the content for proper YAML format
-		content := "---\n" + doc
-
-		// Ensure content ends with a newline
-		if !strings.HasSuffix(content, "\n") {
-			content += "\n"
-		}
-
-		manifests = append(manifests, ManifestInfo{
-			Kind:      kind,
-			Name:      name,
-			Namespace: namespace,
-			Content:   content,
-		})
+		manifests = append(manifests, parsed...)
 	}
-
 	return manifests, nil
-}
-
-// obfuscateSecretData replaces all values in the data and stringData fields of a Secret with obfuscated values
-func obfuscateSecretData(obj map[string]interface{}) map[string]interface{} {
-	// Obfuscate data field if it exists
-	if data, ok := obj["data"].(map[string]interface{}); ok {
-		obfuscatedData := make(map[string]interface{})
-		for key := range data {
-			// Replace each value with obfuscated placeholder
-			obfuscatedData[key] = "***REDACTED***"
-		}
-		obj["data"] = obfuscatedData
-	}
-
-	// Obfuscate stringData field if it exists
-	if stringData, ok := obj["stringData"].(map[string]interface{}); ok {
-		obfuscatedStringData := make(map[string]interface{})
-		for key := range stringData {
-			// Replace each value with obfuscated placeholder
-			obfuscatedStringData[key] = "***REDACTED***"
-		}
-		obj["stringData"] = obfuscatedStringData
-	}
-
-	return obj
 }
