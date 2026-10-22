@@ -6,7 +6,9 @@ kind: Application
 metadata:
   name: myapp.stage.cluster-1
 spec:
+  project: stage
   destination:
+    name: cluster-1
     namespace: myapp
   source:
     repoURL: https://github.com/example/gitops
@@ -20,7 +22,9 @@ kind: Application
 metadata:
   name: otherapp.stage.cluster-1
 spec:
+  project: stage
   destination:
+    name: cluster-1
     namespace: otherapp
   source:
     repoURL: https://github.com/example/gitops

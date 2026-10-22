@@ -4,21 +4,64 @@ import (
 	"strings"
 
 	"gopkg.in/yaml.v3"
+
+	"github.com/kazysgurskas/argocd-hydrate/internal/application"
 )
+
+// Application is what the report shows about the ArgoCD Application a
+// manifest was rendered for.
+type Application struct {
+	// Project is the Application's spec.project.
+	Project string
+	// Cluster is the Application's spec.destination.name.
+	Cluster string
+}
+
+// Applications indexes Applications by metadata.name, which is also the
+// directory argocd-hydrate writes each Application's manifests to.
+type Applications map[string]Application
+
+// LoadApplications reads the ArgoCD Applications in the YAML stream at path
+// and indexes them by name.
+func LoadApplications(path string) (Applications, error) {
+	loaded, err := application.Load(path)
+	if err != nil {
+		return nil, err
+	}
+	apps := make(Applications, len(loaded))
+	for _, app := range loaded {
+		apps[app.Metadata.Name] = Application{Project: app.Spec.Project, Cluster: app.Spec.Destination.Name}
+	}
+	return apps, nil
+}
+
+// Merge returns the union of apps and other; other wins for a name both
+// hold.
+func (apps Applications) Merge(other Applications) Applications {
+	out := make(Applications, len(apps)+len(other))
+	for name, app := range apps {
+		out[name] = app
+	}
+	for name, app := range other {
+		out[name] = app
+	}
+	return out
+}
 
 // Resource identifies the Kubernetes object a manifest file holds, and the
 // ArgoCD application it was rendered for.
 type Resource struct {
-	// App, Environment and Cluster come from the application directory name
-	// when it follows the <app>.<environment>.<cluster> convention; otherwise
-	// App is the whole directory name.
-	App         string `json:"app,omitempty"`
-	Environment string `json:"environment,omitempty"`
-	Cluster     string `json:"cluster,omitempty"`
-	APIVersion  string `json:"apiVersion,omitempty"`
-	Kind        string `json:"kind,omitempty"`
-	Namespace   string `json:"namespace,omitempty"`
-	Name        string `json:"name,omitempty"`
+	// App is the ArgoCD Application the manifest was rendered for: the
+	// first segment of its path, which is the Application's metadata.name.
+	App string `json:"app,omitempty"`
+	// Project and Cluster are the Application's spec.project and
+	// spec.destination.name, when the Application is known.
+	Project    string `json:"project,omitempty"`
+	Cluster    string `json:"cluster,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
+	Kind       string `json:"kind,omitempty"`
+	Namespace  string `json:"namespace,omitempty"`
+	Name       string `json:"name,omitempty"`
 }
 
 // resourceFor describes the manifest at path with the given content. The
@@ -28,16 +71,15 @@ type Resource struct {
 //	<application>/<namespace>/<Kind>/<name>.yaml     namespaced
 //
 // The manifest body is authoritative for apiVersion, kind, namespace and
-// name when it parses; the path fills in what the body lacks.
-func resourceFor(path, content string) *Resource {
+// name when it parses; the path fills in what the body lacks. apps supplies
+// the project and cluster of the Application named by the first segment.
+func resourceFor(path, content string, apps Applications) *Resource {
 	r := &Resource{}
 	parts := strings.Split(path, "/")
 	if len(parts) >= 3 {
-		appParts := strings.SplitN(parts[0], ".", 3)
-		if len(appParts) == 3 {
-			r.App, r.Environment, r.Cluster = appParts[0], appParts[1], appParts[2]
-		} else {
-			r.App = parts[0]
+		r.App = parts[0]
+		if app, ok := apps[parts[0]]; ok {
+			r.Project, r.Cluster = app.Project, app.Cluster
 		}
 		base := strings.TrimSuffix(strings.TrimSuffix(parts[len(parts)-1], ".yaml"), ".yml")
 		switch len(parts) {

@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +19,8 @@ import (
 type diffOptions struct {
 	base, head, output string
 	summary            string
+	baseApplications   string
+	headApplications   string
 	context            int
 	fullTextLimit      int
 	meta               report.Meta
@@ -50,6 +54,8 @@ needed there.`,
 	f.StringVar(&o.head, "head", "", "Head manifest tree: a directory or a .zip (required)")
 	f.StringVar(&o.output, "output", "diff.html", "Output HTML file")
 	f.StringVar(&o.summary, "summary", "", "Also write a Markdown summary, for a pull request comment, to this file")
+	f.StringVar(&o.baseApplications, "base-applications", "", "ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)")
+	f.StringVar(&o.headApplications, "head-applications", "", "ArgoCD Application resources of the head tree (default: applications.yaml in the head tree, if present)")
 	f.IntVar(&o.context, "context", diff.DefaultContext, "Unchanged lines kept around each change")
 	f.IntVar(&o.fullTextLimit, "full-text-limit", diff.DefaultFullTextLimit,
 		"Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never)")
@@ -78,7 +84,11 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	}
 	defer cleanupHead()
 
-	result, err := diff.Compare(baseDir, headDir, diff.Options{Context: o.context, FullTextLimit: o.fullTextLimit})
+	apps, err := applicationsOf(baseDir, o.baseApplications, headDir, o.headApplications)
+	if err != nil {
+		return err
+	}
+	result, err := diff.Compare(baseDir, headDir, diff.Options{Context: o.context, FullTextLimit: o.fullTextLimit, Applications: apps})
 	if err != nil {
 		return err
 	}
@@ -129,6 +139,28 @@ func writeSummary(path string, result *diff.Result) error {
 		return fmt.Errorf("close %s: %w", path, err)
 	}
 	return nil
+}
+
+// applicationsOf reads the Application resources of both trees: the given
+// files, or applications.yaml at each tree root when it exists. Head wins
+// where both trees define the same Application.
+func applicationsOf(baseDir, basePath, headDir, headPath string) (diff.Applications, error) {
+	apps := diff.Applications{}
+	for _, tree := range []struct{ dir, path string }{{baseDir, basePath}, {headDir, headPath}} {
+		path := tree.path
+		if path == "" {
+			path = filepath.Join(tree.dir, "applications.yaml")
+		}
+		loaded, err := diff.LoadApplications(path)
+		if err != nil {
+			if tree.path == "" && errors.Is(err, os.ErrNotExist) {
+				continue
+			}
+			return nil, fmt.Errorf("applications: %w", err)
+		}
+		apps = apps.Merge(loaded)
+	}
+	return apps, nil
 }
 
 func envOr(name, fallback string) string {

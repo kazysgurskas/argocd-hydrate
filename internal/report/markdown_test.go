@@ -7,8 +7,8 @@ import (
 	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
 )
 
-func file(app, environment, cluster, namespace, kind, name string, status diff.Status, add, del int) diff.File {
-	path := app + "." + environment + "." + cluster + "/"
+func file(app, project, cluster, namespace, kind, name string, status diff.Status, add, del int) diff.File {
+	path := app + "/"
 	if namespace != "" {
 		path += namespace + "/"
 	}
@@ -17,7 +17,7 @@ func file(app, environment, cluster, namespace, kind, name string, status diff.S
 		Path:   path,
 		Status: status,
 		Resource: &diff.Resource{
-			App: app, Environment: environment, Cluster: cluster,
+			App: app, Project: project, Cluster: cluster,
 			Namespace: namespace, Kind: kind, Name: name,
 		},
 		Additions: add,

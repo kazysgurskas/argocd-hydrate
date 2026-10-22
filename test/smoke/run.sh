@@ -22,6 +22,8 @@ for side in base head; do
   "$bin" hydrate --applications "$example/$side/applications.yaml" --output "$out/$side" --charts-dir cache
 done
 "$bin" diff --base "$out/base" --head "$out/head" --output "$out/diff.html" \
+  --base-applications "$example/base/applications.yaml" --head-applications "$example/head/applications.yaml" \
+  --summary "$out/diff.md" \
   --repo example/gitops --pr-number 1 --pr-title "Ingress to Gateway API migration" \
   --base-ref main --head-ref feature/gateway-api --author smoke
 echo "open $(pwd)/$out/diff.html"
