@@ -1,6 +1,7 @@
 package diff
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"slices"
@@ -51,7 +52,9 @@ func TestCompare(t *testing.T) {
 		"web.prod.euw2/notes.txt":                "ignored but different",
 	})
 
-	r, err := Compare(base, head, DefaultOptions())
+	opts := DefaultOptions()
+	opts.Applications = Applications{"web.prod.euw2": {Project: "prod", Cluster: "euw2"}}
+	r, err := Compare(base, head, opts)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -100,7 +103,7 @@ func TestCompare(t *testing.T) {
 	if dep.BaseText == nil || dep.HeadText == nil {
 		t.Error("modified file should carry full text under the limit")
 	}
-	if dep.Resource == nil || dep.Resource.App != "web" || dep.Resource.Environment != "prod" || dep.Resource.Cluster != "euw2" ||
+	if dep.Resource == nil || dep.Resource.App != "web.prod.euw2" || dep.Resource.Project != "prod" || dep.Resource.Cluster != "euw2" ||
 		dep.Resource.Kind != "Deployment" || dep.Resource.Namespace != "shop" || dep.Resource.Name != "web" || dep.Resource.APIVersion != "apps/v1" {
 		t.Errorf("resource = %+v", dep.Resource)
 	}
@@ -207,27 +210,80 @@ func TestHighlightPairs(t *testing.T) {
 }
 
 func TestResourceFor(t *testing.T) {
+	apps := Applications{"app.stage.c1": {Project: "stage", Cluster: "c1"}}
 	tests := []struct {
 		path, content string
 		want          Resource
 	}{
-		{"app.stage.c1/Kind/name.yaml", "", Resource{App: "app", Environment: "stage", Cluster: "c1", Kind: "Kind", Name: "name"}},
-		{"app.stage.c1/ns/Kind/name.yml", "", Resource{App: "app", Environment: "stage", Cluster: "c1", Namespace: "ns", Kind: "Kind", Name: "name"}},
+		{"app.stage.c1/Kind/name.yaml", "", Resource{App: "app.stage.c1", Project: "stage", Cluster: "c1", Kind: "Kind", Name: "name"}},
+		{"app.stage.c1/ns/Kind/name.yml", "", Resource{App: "app.stage.c1", Project: "stage", Cluster: "c1", Namespace: "ns", Kind: "Kind", Name: "name"}},
 		{"plain-app/Kind/name.yaml", "", Resource{App: "plain-app", Kind: "Kind", Name: "name"}},
+		{"unknown.stage.c1/Kind/name.yaml", "", Resource{App: "unknown.stage.c1", Kind: "Kind", Name: "name"}},
 		{"app.stage.c1/Kind/name.yaml", "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: real\n  namespace: real-ns\n",
-			Resource{App: "app", Environment: "stage", Cluster: "c1", APIVersion: "v1", Kind: "ConfigMap", Namespace: "real-ns", Name: "real"}},
+			Resource{App: "app.stage.c1", Project: "stage", Cluster: "c1", APIVersion: "v1", Kind: "ConfigMap", Namespace: "real-ns", Name: "real"}},
 		{"odd.yaml", "kind: Thing\napiVersion: x/v1\nmetadata:\n  name: t\n", Resource{APIVersion: "x/v1", Kind: "Thing", Name: "t"}},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
-			got := resourceFor(tt.path, tt.content)
+			got := resourceFor(tt.path, tt.content, apps)
 			if got == nil || *got != tt.want {
 				t.Errorf("resourceFor(%q) = %+v, want %+v", tt.path, got, tt.want)
 			}
 		})
 	}
-	if resourceFor("x.yaml", "") != nil {
+	if resourceFor("x.yaml", "", nil) != nil {
 		t.Error("expected nil for a path with no structure and no body")
+	}
+}
+
+func TestLoadApplications(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "applications.yaml")
+	stream := `---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shop.prod.euw2-prod-apollo
+spec:
+  destination:
+    name: euw2-prod-apollo-shard-04
+    namespace: shop
+  project: prod
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: not-an-application
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: bare
+spec:
+  destination:
+    namespace: bare
+`
+	if err := os.WriteFile(path, []byte(stream), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	apps, err := LoadApplications(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(apps) != 2 {
+		t.Fatalf("got %d applications, want 2: %+v", len(apps), apps)
+	}
+	if got := apps["shop.prod.euw2-prod-apollo"]; got != (Application{Project: "prod", Cluster: "euw2-prod-apollo-shard-04"}) {
+		t.Errorf("shop = %+v", got)
+	}
+	if got := apps["bare"]; got != (Application{}) {
+		t.Errorf("bare = %+v, want empty project and cluster", got)
+	}
+	merged := Applications{"a": {Project: "x"}, "bare": {Project: "old"}}.Merge(apps)
+	if len(merged) != 3 || merged["bare"].Project != "" || merged["a"].Project != "x" {
+		t.Errorf("merge = %+v", merged)
+	}
+	if _, err := LoadApplications(filepath.Join(t.TempDir(), "missing.yaml")); !errors.Is(err, os.ErrNotExist) {
+		t.Errorf("missing file: %v", err)
 	}
 }
 

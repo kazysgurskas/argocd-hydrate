@@ -66,7 +66,7 @@ constraint excludes it fails with a message that says so.
 `argocd-hydrate diff` compares two rendered trees, as the command above writes
 them, and produces a self-contained HTML report: files grouped by application,
 unified or split view, context expansion, filters by status, application,
-environment, cluster and kind, intra-line change highlighting, dark mode, and
+project, cluster and kind, intra-line change highlighting, dark mode, and
 keyboard navigation. Each input is a directory or a zip archive of one. Only
 `.yaml`/`.yml` files take part.
 
@@ -84,13 +84,22 @@ if your workflow exports it), so only `--base` and `--head` are needed.
 `--full-text-limit` the largest modified file whose whole text is embedded so
 context can be expanded in the viewer (default 2000 lines).
 
+Each file is labelled with the ArgoCD Application it was rendered for (the
+first path segment, which is the Application's `metadata.name`) and with that
+Application's `spec.project` and `spec.destination.name`. Those come from the
+Application resources themselves: `applications.yaml` at the root of each tree
+when it exists (the hydrate step's input file, when it is written next to the
+output), or the files given with `--base-applications` and
+`--head-applications`. Without them, files still group by Application; only
+the project and cluster labels stay empty.
+
 The report embeds the diff as JSON and renders it in the browser, so a page
 with hundreds of changed manifests stays small and only draws what is on
 screen. Secrets are already redacted by the hydrate step.
 
 `--summary <file>` also writes a Markdown summary for a pull request comment:
 a totals line ("11 manifests changed: 4 added, 6 modified, 1 deleted") and a
-table with one row per application, environment and cluster, collapsed when
+table with one row per application, project and cluster, collapsed when
 it has more than eight rows. A pull request that renders to no change says so
 in one line.
 

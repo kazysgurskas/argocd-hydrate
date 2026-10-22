@@ -17,7 +17,7 @@
   --mod: #a16207; --mod-tint: #fdf5e0;
   --hunk: #eceff3; --hunk-ink: #6b7280;
   --key: #1d4ed8; --str: #334e68; --num: #7e22ce; --cmt: #8b94a3;
-  --h-app: #3730a3; --h-app-bg: #e6e5ff; --h-env: #9a3412; --h-env-bg: #ffe9dd; --h-cluster: #6d28d9; --h-cluster-bg: #efe6ff; --h-api: #4b5563; --h-api-bg: #e9ebee;
+  --h-app: #3730a3; --h-app-bg: #e6e5ff; --h-project: #9a3412; --h-project-bg: #ffe9dd; --h-cluster: #6d28d9; --h-cluster-bg: #efe6ff; --h-api: #4b5563; --h-api-bg: #e9ebee;
   --k-workload: #1d4ed8; --k-workload-bg: #e3ebff; --k-network: #6d28d9; --k-network-bg: #efe6ff; --k-config: #9a3412; --k-config-bg: #ffe9dd; --k-policy: #0f766e; --k-policy-bg: #d9f3ef; --k-security: #9d174d; --k-security-bg: #fde4ee; --k-other: #4b5563; --k-other-bg: #e9ebee;
   --sans: "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
   --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -28,7 +28,7 @@
   --accent: #f59e0b; --accent-ink: #fbbf24; --accent-tint: #2e2008; --ring: rgba(245,158,11,.4);
   --add: #4ade80; --add-tint: #10261a; --add-strong: #1f5a35; --del: #f87171; --del-tint: #2d1516; --del-strong: #6a2425; --mod: #fbbf24; --mod-tint: #2a2111;
   --hunk: #151a21; --hunk-ink: #7f8a99; --key: #93c5fd; --str: #a5c8ff; --num: #d8b4fe; --cmt: #6b7482;
-  --h-app: #a5b4fc; --h-app-bg: #1e1f4a; --h-env: #fdba74; --h-env-bg: #3a1f10; --h-cluster: #c4b5fd; --h-cluster-bg: #2a1d4d; --h-api: #a3acb8; --h-api-bg: #1e242c;
+  --h-app: #a5b4fc; --h-app-bg: #1e1f4a; --h-project: #fdba74; --h-project-bg: #3a1f10; --h-cluster: #c4b5fd; --h-cluster-bg: #2a1d4d; --h-api: #a3acb8; --h-api-bg: #1e242c;
   --k-workload: #93c5fd; --k-workload-bg: #172548; --k-network: #c4b5fd; --k-network-bg: #2a1d47; --k-config: #fdba74; --k-config-bg: #3a2810; --k-policy: #5eead4; --k-policy-bg: #0f2f2b; --k-security: #f9a8d4; --k-security-bg: #3d1527; --k-other: #a3acb8; --k-other-bg: #1e242c;
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
@@ -37,7 +37,7 @@
   --accent: #f59e0b; --accent-ink: #fbbf24; --accent-tint: #2e2008; --ring: rgba(245,158,11,.4);
   --add: #4ade80; --add-tint: #10261a; --add-strong: #1f5a35; --del: #f87171; --del-tint: #2d1516; --del-strong: #6a2425; --mod: #fbbf24; --mod-tint: #2a2111;
   --hunk: #151a21; --hunk-ink: #7f8a99; --key: #93c5fd; --str: #a5c8ff; --num: #d8b4fe; --cmt: #6b7482;
-  --h-app: #a5b4fc; --h-app-bg: #1e1f4a; --h-env: #fdba74; --h-env-bg: #3a1f10; --h-cluster: #c4b5fd; --h-cluster-bg: #2a1d4d; --h-api: #a3acb8; --h-api-bg: #1e242c;
+  --h-app: #a5b4fc; --h-app-bg: #1e1f4a; --h-project: #fdba74; --h-project-bg: #3a1f10; --h-cluster: #c4b5fd; --h-cluster-bg: #2a1d4d; --h-api: #a3acb8; --h-api-bg: #1e242c;
   --k-workload: #93c5fd; --k-workload-bg: #172548; --k-network: #c4b5fd; --k-network-bg: #2a1d47; --k-config: #fdba74; --k-config-bg: #3a2810; --k-policy: #5eead4; --k-policy-bg: #0f2f2b; --k-security: #f9a8d4; --k-security-bg: #3d1527; --k-other: #a3acb8; --k-other-bg: #1e242c;
 }}
 * { box-sizing: border-box; }
@@ -94,7 +94,7 @@ button { cursor: pointer; }
 .toolbar .end { margin-left: auto; display: flex; gap: 14px; align-items: center; }
 .tag { display: inline-flex; align-items: baseline; gap: 4px; font-size: 11px; line-height: 16px; border-radius: 3px; padding: 0 6px; color: var(--ink-2); background: var(--surface-2); font-family: var(--mono); }
 .tag .key { font-size: 9px; letter-spacing: .08em; text-transform: uppercase; opacity: .7; font-family: var(--sans); font-weight: 700; }
-.tag.app { color: var(--h-app); background: var(--h-app-bg); } .tag.env { color: var(--h-env); background: var(--h-env-bg); } .tag.cluster { color: var(--h-cluster); background: var(--h-cluster-bg); } .tag.api { color: var(--h-api); background: var(--h-api-bg); }
+.tag.app { color: var(--h-app); background: var(--h-app-bg); } .tag.project { color: var(--h-project); background: var(--h-project-bg); } .tag.cluster { color: var(--h-cluster); background: var(--h-cluster-bg); } .tag.api { color: var(--h-api); background: var(--h-api-bg); }
 .add { color: var(--add); } .del { color: var(--del); } .mod { color: var(--mod); }
 .stat { font-family: var(--mono); font-size: 11.5px; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
@@ -133,7 +133,7 @@ button { cursor: pointer; }
 .crumb { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 0; font-family: var(--mono); font-size: 13px; }
 .crumb .cr { color: var(--ink-2); font-style: normal; }
 .crumb .cr + .cr::before { content: "/"; color: var(--ink-3); margin: 0 7px; }
-.crumb .cr.app { color: var(--h-app); } .crumb .cr.env { color: var(--h-env); } .crumb .cr.cluster { color: var(--h-cluster); }
+.crumb .cr.app { color: var(--h-app); } .crumb .cr.project { color: var(--h-project); } .crumb .cr.cluster { color: var(--h-cluster); }
 .crumb .leaf { display: inline-flex; align-items: center; gap: 7px; }
 .rkind { font-family: var(--sans); font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-radius: 3px; padding: 1px 6px; color: var(--k-other); background: var(--k-other-bg); }
 .rkind.workload { color: var(--k-workload); background: var(--k-workload-bg); } .rkind.network { color: var(--k-network); background: var(--k-network-bg); } .rkind.config { color: var(--k-config); background: var(--k-config-bg); } .rkind.policy { color: var(--k-policy); background: var(--k-policy-bg); } .rkind.security { color: var(--k-security); background: var(--k-security-bg); }
@@ -184,7 +184,7 @@ mark { background: var(--del-strong); color: inherit; border-radius: 2px; }
 'use strict';
 var DATA = JSON.parse(document.getElementById('diff-data').textContent);
 var meta = DATA.meta, R = DATA.result, files = R.files || [];
-var state = { view: 'unified', context: 'compact', wrap: false, q: '', status: new Set(), app: '', env: '', cluster: '', kind: '', active: -1 };
+var state = { view: 'unified', context: 'compact', wrap: false, q: '', status: new Set(), app: '', project: '', cluster: '', kind: '', active: -1 };
 var LIMIT = 300;
 
 function esc(s) { return s.replace(/[&<>"']/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c]; }); }
@@ -214,7 +214,7 @@ function statText(add, del) {
 }
 function res(f) { return f.resource || {}; }
 function appLabel(f) { return res(f).app || f.path.split('/')[0]; }
-function groupKey(f) { var r = res(f); return [appLabel(f), r.environment || '', r.cluster || ''].join('|'); }
+function groupKey(f) { var r = res(f); return [appLabel(f), r.project || '', r.cluster || ''].join('|'); }
 function displayName(f) { return res(f).name || f.path.split('/').pop().replace(/\.ya?ml$/, ''); }
 /* Kind family, for the tint on kind labels. */
 function kindFamily(r) {
@@ -264,15 +264,15 @@ function buildTop() {
   var refs = h('div', {class: 'refs'});
   if (meta.baseRef || meta.headRef) append(refs, h('span', {}, h('code', {}, meta.baseRef || 'base'), ' → ', h('code', {}, meta.headRef || 'head')));
   if (meta.repo) append(refs, h('span', {}, meta.repo));
-  var envs0 = new Set(files.map(function (f) { return res(f).environment; }).filter(Boolean));
+  var projects0 = new Set(files.map(function (f) { return res(f).project; }).filter(Boolean));
   var clusters0 = new Set(files.map(function (f) { return res(f).cluster; }).filter(Boolean));
-  if (envs0.size === 1) append(refs, tag('env', 'env', Array.from(envs0)[0]));
+  if (projects0.size === 1) append(refs, tag('project', 'project', Array.from(projects0)[0]));
   if (clusters0.size === 1) append(refs, tag('cluster', 'cluster', Array.from(clusters0)[0]));
   if (meta.author) append(refs, h('span', {}, 'by ' + meta.author));
   if (meta.generatedAt) append(refs, h('span', {}, 'generated ' + new Date(meta.generatedAt).toLocaleString()));
 
   var apps = new Set(files.map(appLabel));
-  var envs = new Set(files.map(function (f) { return res(f).environment; }).filter(Boolean));
+  var projects = new Set(files.map(function (f) { return res(f).project; }).filter(Boolean));
   var clusters = new Set(files.map(function (f) { return res(f).cluster; }).filter(Boolean));
   var kinds = new Set(files.map(function (f) { return res(f).kind; }).filter(Boolean));
   var n = Math.max(files.length, 1), pct = function (x) { return (100 * x / n) + '%'; };
@@ -289,7 +289,7 @@ function buildTop() {
     var chip = h('button', {class: 'app-chip', 'data-app': g.app, onclick: function (e) {
       var on = state.app === g.app; state.app = on ? '' : g.app; var s = document.getElementById('app'); if (s) s.value = state.app;
       document.querySelectorAll('.app-chip').forEach(function (c) { c.classList.toggle('on', !on && c.dataset.app === g.app); }); applyFilters(); }},
-      h('span', {class: 'an'}, g.app), g.env ? h('span', {class: 'tag env'}, g.env) : null, g.cluster ? h('span', {class: 'tag cluster'}, g.cluster) : null, h('span', {class: 'ac'}, g.idx.length), statText(g.add, g.del));
+      h('span', {class: 'an'}, g.app), g.project ? h('span', {class: 'tag project'}, g.project) : null, g.cluster ? h('span', {class: 'tag cluster'}, g.cluster) : null, h('span', {class: 'ac'}, g.idx.length), statText(g.add, g.del));
     append(strip, chip);
   });
 
@@ -309,7 +309,7 @@ function buildTop() {
   var expandAll = h('button', {class: 'pill', onclick: function () { document.querySelectorAll('.file').forEach(function (f) { f.classList.remove('collapsed'); ensureBody(f); }); }}, 'Expand all');
   var collapseAll = h('button', {class: 'pill', onclick: function () { document.querySelectorAll('.file').forEach(function (f) { f.classList.add('collapsed'); }); }}, 'Collapse all');
   var toolbar = h('div', {class: 'toolbar'}, search, statusPills,
-    sel('app', 'All applications', apps), sel('env', 'All environments', envs), sel('cluster', 'All clusters', clusters), sel('kind', 'All kinds', kinds),
+    sel('app', 'All applications', apps), sel('project', 'All projects', projects), sel('cluster', 'All clusters', clusters), sel('kind', 'All kinds', kinds),
     h('button', {class: 'pill sm', id: 'clear', onclick: clearFilters, disabled: true}, 'Clear'),
     h('div', {class: 'end'}, viewSeg, ctxSeg, wrapBtn, expandAll, collapseAll));
   append(top, [tb, refs, metrics, strip, toolbar]);
@@ -328,7 +328,7 @@ var groups = [];
   var byKey = {};
   files.forEach(function (f, i) {
     var k = groupKey(f);
-    if (!byKey[k]) { byKey[k] = {key: k, app: appLabel(f), env: res(f).environment || '', cluster: res(f).cluster || '', idx: [], add: 0, del: 0}; groups.push(byKey[k]); }
+    if (!byKey[k]) { byKey[k] = {key: k, app: appLabel(f), project: res(f).project || '', cluster: res(f).cluster || '', idx: [], add: 0, del: 0}; groups.push(byKey[k]); }
     var g = byKey[k]; g.idx.push(i); g.add += f.additions; g.del += f.deletions;
   });
 })();
@@ -336,7 +336,7 @@ function buildSidebar() {
   var nav = h('nav', {class: 'sidebar', id: 'sidebar'}, h('div', {class: 'count', id: 'count'}));
   groups.forEach(function (g) {
     var gel = h('div', {class: 'group'});
-    var sub = (g.env || g.cluster) ? h('span', {class: 'gsub'}, g.env ? h('span', {class: 'tag env'}, g.env) : null, g.cluster ? h('span', {class: 'tag cluster'}, g.cluster) : null) : null;
+    var sub = (g.project || g.cluster) ? h('span', {class: 'gsub'}, g.project ? h('span', {class: 'tag project'}, g.project) : null, g.cluster ? h('span', {class: 'tag cluster'}, g.cluster) : null) : null;
     append(gel, h('div', {class: 'group-h', onclick: function () { gel.classList.toggle('closed'); }}, h('span', {class: 'chev'}), h('span', {class: 'gname', title: g.app}, g.app), sub, statText(g.add, g.del)));
     var items = h('div', {class: 'items'});
     g.idx.forEach(function (i) {
@@ -361,7 +361,7 @@ function buildFile(i) {
   var f = files[i], r = res(f);
   var card = h('section', {class: 'file', id: 'file-' + i, 'data-i': i});
   var crumb = h('div', {class: 'crumb'});
-  if (r.app) append(crumb, [h('span', {class: 'cr app'}, r.app), r.environment ? h('span', {class: 'cr env'}, r.environment) : null, r.cluster ? h('span', {class: 'cr cluster'}, r.cluster) : null]);
+  if (r.app) append(crumb, [h('span', {class: 'cr app'}, r.app), r.project ? h('span', {class: 'cr project'}, r.project) : null, r.cluster ? h('span', {class: 'cr cluster'}, r.cluster) : null]);
   if (r.namespace) append(crumb, h('span', {class: 'cr ns'}, r.namespace));
   append(crumb, h('span', {class: 'cr leaf'}, h('span', {class: 'rkind ' + kindFamily(r)}, r.kind || 'file'), h('span', {class: 'rname'}, displayName(f))));
   var title = h('div', {class: 'title'}, crumb, h('span', {class: 'meta-line'}, r.apiVersion ? h('span', {class: 'api'}, r.apiVersion) : null, h('span', {class: 'path', title: f.path}, f.path)));
@@ -465,7 +465,7 @@ function matches(f) {
   var r = res(f);
   if (state.status.size && !state.status.has(f.status)) return false;
   if (state.app && appLabel(f) !== state.app) return false;
-  if (state.env && r.environment !== state.env) return false;
+  if (state.project && r.project !== state.project) return false;
   if (state.cluster && r.cluster !== state.cluster) return false;
   if (state.kind && r.kind !== state.kind) return false;
   if (state.q) {
@@ -479,14 +479,14 @@ function applyFilters() {
   files.forEach(function (f, i) { var ok = matches(f); document.getElementById('file-' + i).classList.toggle('hide', !ok); document.getElementById('nav-' + i).classList.toggle('hide', !ok); if (ok) shown++; });
   document.querySelectorAll('.group').forEach(function (g) { g.classList.toggle('hide', !g.querySelector('.item:not(.hide)')); });
   document.getElementById('count').textContent = shown === files.length ? plural(files.length, 'file') : shown + ' of ' + files.length + ' files';
-  var any = state.q || state.status.size || state.app || state.env || state.cluster || state.kind;
+  var any = state.q || state.status.size || state.app || state.project || state.cluster || state.kind;
   document.getElementById('clear').disabled = !any;
 }
 function clearFilters() {
-  state.q = ''; state.status.clear(); state.app = state.env = state.cluster = state.kind = '';
+  state.q = ''; state.status.clear(); state.app = state.project = state.cluster = state.kind = '';
   document.getElementById('q').value = '';
   document.querySelectorAll('[data-s]').forEach(function (b) { b.classList.remove('on'); });
-  ['app', 'env', 'cluster', 'kind'].forEach(function (id) { var s = document.getElementById(id); if (s) s.value = ''; });
+  ['app', 'project', 'cluster', 'kind'].forEach(function (id) { var s = document.getElementById(id); if (s) s.value = ''; });
   applyFilters();
 }
 function goTo(i) {

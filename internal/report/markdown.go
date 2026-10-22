@@ -23,7 +23,7 @@ const DefaultCollapseAfter = 8
 
 // WriteMarkdown writes a GitHub-flavoured Markdown summary of result to w,
 // meant for a pull request comment: a totals line and a table with one row
-// per application, environment and cluster.
+// per application, project and cluster.
 func WriteMarkdown(w io.Writer, result *diff.Result, opts MarkdownOptions) error {
 	if result == nil {
 		result = &diff.Result{}
@@ -55,11 +55,11 @@ func WriteMarkdown(w io.Writer, result *diff.Result, opts MarkdownOptions) error
 	if collapse {
 		fmt.Fprintf(&b, "<details>\n<summary>%s</summary>\n\n", plural(len(rows), "application"))
 	}
-	b.WriteString("| Application | Environment | Cluster | Added | Modified | Deleted | Lines |\n")
+	b.WriteString("| Application | Project | Cluster | Added | Modified | Deleted | Lines |\n")
 	b.WriteString("|---|---|---|---:|---:|---:|---:|\n")
 	for _, r := range rows {
 		fmt.Fprintf(&b, "| %s | %s | %s | %s | %s | %s | +%d / −%d |\n",
-			cell(r.app), cell(r.environment), cell(r.cluster),
+			cell(r.app), cell(r.project), cell(r.cluster),
 			blankZero(r.added), blankZero(r.modified), blankZero(r.deleted),
 			r.additions, r.deletions)
 	}
@@ -72,28 +72,28 @@ func WriteMarkdown(w io.Writer, result *diff.Result, opts MarkdownOptions) error
 }
 
 type appRow struct {
-	app, environment, cluster string
-	added, modified, deleted  int
-	additions, deletions      int
+	app, project, cluster    string
+	added, modified, deleted int
+	additions, deletions     int
 }
 
-// appRows aggregates files per application, environment and cluster, in
+// appRows aggregates files per application, project and cluster, in
 // that order. Files whose path does not follow the hydrate layout fall under
 // their first path segment.
 func appRows(result *diff.Result) []appRow {
-	type key struct{ app, environment, cluster string }
+	type key struct{ app, project, cluster string }
 	byKey := map[key]*appRow{}
 	for _, f := range result.Files {
 		k := key{}
 		if f.Resource != nil {
-			k = key{f.Resource.App, f.Resource.Environment, f.Resource.Cluster}
+			k = key{f.Resource.App, f.Resource.Project, f.Resource.Cluster}
 		}
 		if k.app == "" {
 			k.app, _, _ = strings.Cut(f.Path, "/")
 		}
 		r := byKey[k]
 		if r == nil {
-			r = &appRow{app: k.app, environment: k.environment, cluster: k.cluster}
+			r = &appRow{app: k.app, project: k.project, cluster: k.cluster}
 			byKey[k] = r
 		}
 		switch f.Status {
@@ -116,8 +116,8 @@ func appRows(result *diff.Result) []appRow {
 		if a.app != b.app {
 			return a.app < b.app
 		}
-		if a.environment != b.environment {
-			return a.environment < b.environment
+		if a.project != b.project {
+			return a.project < b.project
 		}
 		return a.cluster < b.cluster
 	})

@@ -95,6 +95,10 @@ type Options struct {
 	// on modified files. Zero means never; negative means
 	// DefaultFullTextLimit.
 	FullTextLimit int
+	// Applications supplies the project and destination cluster of each
+	// Application, by name, for the resources rendered under its directory.
+	// Nil leaves those fields empty.
+	Applications Applications
 }
 
 // Defaults for Options, used by the command line.
@@ -159,18 +163,18 @@ func Compare(baseDir, headDir string, opts Options) (*Result, error) {
 		case !inBase:
 			f.Status = StatusAdded
 			f.Hunks = []Hunk{wholeFileHunk(splitLines(h), LineAdded)}
-			f.Resource = resourceFor(p, h)
+			f.Resource = resourceFor(p, h, opts.Applications)
 			result.Added++
 		case !inHead:
 			f.Status = StatusDeleted
 			f.Hunks = []Hunk{wholeFileHunk(splitLines(b), LineDeleted)}
-			f.Resource = resourceFor(p, b)
+			f.Resource = resourceFor(p, b, opts.Applications)
 			result.Deleted++
 		default:
 			f.Status = StatusModified
 			bl, hl := splitLines(b), splitLines(h)
 			f.Hunks = hunks(bl, hl, context)
-			f.Resource = resourceFor(p, h)
+			f.Resource = resourceFor(p, h, opts.Applications)
 			if fullTextLimit > 0 && len(bl) <= fullTextLimit && len(hl) <= fullTextLimit {
 				f.BaseText, f.HeadText = bl, hl
 			}

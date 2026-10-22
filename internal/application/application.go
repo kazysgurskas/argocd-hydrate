@@ -20,7 +20,9 @@ type Application struct {
 		Name string `yaml:"name"`
 	} `yaml:"metadata"`
 	Spec struct {
+		Project     string `yaml:"project"`
 		Destination struct {
+			Name      string `yaml:"name"`
 			Namespace string `yaml:"namespace"`
 		} `yaml:"destination"`
 		Source  *Source   `yaml:"source,omitempty"`
