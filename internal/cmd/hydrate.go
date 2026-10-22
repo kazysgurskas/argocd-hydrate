@@ -8,9 +8,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
-	"github.com/kazysgurskas/argocd-hydrate/internal/helm"
-	"github.com/kazysgurskas/argocd-hydrate/internal/hydrate"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/helm"
+	"github.com/kazysgurskas/argocd-diff/internal/hydrate"
 )
 
 type hydrateOptions struct {
@@ -20,8 +20,26 @@ type hydrateOptions struct {
 	kubeVersion  string
 }
 
-// addHydrateFlags binds the hydrate flags to o. The root command and the
-// hydrate subcommand share one set, so either form sets the same options.
+func newHydrateCommand() *cobra.Command {
+	o := &hydrateOptions{}
+	cmd := &cobra.Command{
+		Use:   "hydrate",
+		Short: "Render ArgoCD applications into Kubernetes manifests",
+		Long: `Render ArgoCD Application resources into the Kubernetes manifests they would
+deploy. Helm chart sources are pulled and templated, directory sources are read
+as they are, and Secret values are redacted. Each application is written to
+<output>/<application>/<namespace>/<Kind>/<name>.yaml, or
+<output>/<application>/<Kind>/<name>.yaml for a cluster-scoped object.`,
+		Example: `  argocd-diff hydrate
+  argocd-diff hydrate --applications apps/applications.yaml --output rendered --kube-version 1.35.6`,
+		RunE: func(*cobra.Command, []string) error {
+			return runHydrate(o)
+		},
+	}
+	addHydrateFlags(cmd, o)
+	return cmd
+}
+
 func addHydrateFlags(cmd *cobra.Command, o *hydrateOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.applications, "applications", "manifests/applications.yaml",

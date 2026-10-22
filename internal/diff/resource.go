@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 // Application is what the report shows about the ArgoCD Application a
@@ -18,7 +18,7 @@ type Application struct {
 }
 
 // Applications indexes Applications by metadata.name, which is also the
-// directory argocd-hydrate writes each Application's manifests to.
+// directory argocd-diff hydrate writes each Application's manifests to.
 type Applications map[string]Application
 
 // LoadApplications reads the ArgoCD Applications in the YAML stream at path
@@ -65,7 +65,7 @@ type Resource struct {
 }
 
 // resourceFor describes the manifest at path with the given content. The
-// path layout is the one argocd-hydrate writes:
+// path layout is the one argocd-diff hydrate writes:
 //
 //	<application>/<Kind>/<name>.yaml                 cluster-scoped
 //	<application>/<namespace>/<Kind>/<name>.yaml     namespaced

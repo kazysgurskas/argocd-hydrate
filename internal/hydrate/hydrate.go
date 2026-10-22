@@ -6,7 +6,7 @@ package hydrate
 import (
 	"fmt"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 // Options tune a render.

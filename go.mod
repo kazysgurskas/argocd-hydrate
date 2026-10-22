@@ -1,4 +1,4 @@
-module github.com/kazysgurskas/argocd-hydrate
+module github.com/kazysgurskas/argocd-diff
 
 go 1.23.0
 

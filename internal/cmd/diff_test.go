@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -61,5 +63,52 @@ func TestApplicationsOf(t *testing.T) {
 	}
 	if _, err := applicationsOf(base, filepath.Join(base, "nope.yaml"), head, ""); err == nil {
 		t.Error("explicit missing file should fail")
+	}
+}
+
+// TestRootDiffsTwoTrees pins the root command's job: argocd-diff with
+// --base and --head writes the report and the summary.
+func TestRootDiffsTwoTrees(t *testing.T) {
+	dir := t.TempDir()
+	for side, replicas := range map[string]string{"base": "1", "head": "2"} {
+		path := filepath.Join(dir, side, "web.stage.c1", "shop", "Deployment", "web.yaml")
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		content := "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  name: web\n  namespace: shop\nspec:\n  replicas: " + replicas + "\n"
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	html, summary := filepath.Join(dir, "diff.html"), filepath.Join(dir, "diff.md")
+
+	root := New()
+	root.SetOut(io.Discard)
+	root.SetArgs([]string{"--base", filepath.Join(dir, "base"), "--head", filepath.Join(dir, "head"), "--output", html, "--summary", summary})
+	if err := root.Execute(); err != nil {
+		t.Fatal(err)
+	}
+	page, err := os.ReadFile(html)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(page), `<script type="application/json" id="diff-data">`) {
+		t.Error("report lacks the embedded diff data")
+	}
+	md, err := os.ReadFile(summary)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(string(md), "**1 manifest changed**") {
+		t.Errorf("summary:\n%s", md)
+	}
+}
+
+func TestRootRequiresBaseAndHead(t *testing.T) {
+	root := New()
+	root.SetOut(io.Discard)
+	root.SetArgs(nil)
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "required flag") {
+		t.Errorf("want a required-flag error, got %v", err)
 	}
 }

@@ -78,26 +78,9 @@ func TestHydrateWritesManifestTree(t *testing.T) {
 	}
 }
 
-// TestRootHydratesWithoutSubcommand pins the form CI uses:
-// argocd-hydrate --kube-version X with no subcommand.
-func TestRootHydratesWithoutSubcommand(t *testing.T) {
-	dir := t.TempDir()
-	applications := writeFixture(t, dir)
-	out := filepath.Join(dir, "out")
-
-	root := New()
-	root.SetArgs([]string{"--applications", applications, "--output", out, "--kube-version", "1.30.0"})
-	if err := root.Execute(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Stat(filepath.Join(out, "web.stage.c1", "shop", "Deployment", "web.yaml")); err != nil {
-		t.Error(err)
-	}
-}
-
 func TestHydrateMissingApplicationsFileIsAnError(t *testing.T) {
 	root := New()
-	root.SetArgs([]string{"--applications", filepath.Join(t.TempDir(), "missing.yaml"), "--output", t.TempDir()})
+	root.SetArgs([]string{"hydrate", "--applications", filepath.Join(t.TempDir(), "missing.yaml"), "--output", t.TempDir()})
 	err := root.Execute()
 	if err == nil || !strings.HasPrefix(err.Error(), "load applications: ") {
 		t.Errorf("want a wrapped load error, got %v", err)

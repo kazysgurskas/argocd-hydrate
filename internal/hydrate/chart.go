@@ -3,8 +3,8 @@ package hydrate
 import (
 	"strings"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
-	"github.com/kazysgurskas/argocd-hydrate/internal/helm"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/helm"
 )
 
 // renderChart pulls the source's chart and templates it. Value files are

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/diff"
 )
 
 func file(app, project, cluster, namespace, kind, name string, status diff.Status, add, del int) diff.File {

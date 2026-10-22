@@ -1,6 +1,6 @@
 # Smoke test
 
-A place to run `argocd-hydrate` and `argocd-hydrate diff` end to end without a
+A place to run `argocd-diff hydrate` and `argocd-diff` end to end without a
 cluster or a real GitOps repository.
 
 ```console

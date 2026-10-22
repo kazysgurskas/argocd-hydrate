@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/cmd"
+	"github.com/kazysgurskas/argocd-diff/internal/cmd"
 )
 
 func main() {
 	if err := cmd.New().Execute(); err != nil {
-		fmt.Fprintln(os.Stderr, "argocd-hydrate:", err)
+		fmt.Fprintln(os.Stderr, "argocd-diff:", err)
 		os.Exit(1)
 	}
 }

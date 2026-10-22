@@ -9,7 +9,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 // renderDirectory joins the .yaml files under source.Path into one stream,

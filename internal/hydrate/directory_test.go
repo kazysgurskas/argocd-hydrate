@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 func writeTree(t *testing.T, root string, files map[string]string) {

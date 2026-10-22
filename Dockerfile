@@ -1,5 +1,5 @@
 FROM --platform=$TARGETPLATFORM debian:stable-slim
 
-COPY argocd-hydrate /argocd-hydrate
+COPY argocd-diff /argocd-diff
 
-ENTRYPOINT ["/argocd-hydrate"]
+ENTRYPOINT ["/argocd-diff"]

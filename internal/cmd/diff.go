@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
-	"github.com/kazysgurskas/argocd-hydrate/internal/report"
-	"github.com/kazysgurskas/argocd-hydrate/internal/version"
+	"github.com/kazysgurskas/argocd-diff/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/report"
+	"github.com/kazysgurskas/argocd-diff/internal/version"
 )
 
 type diffOptions struct {
@@ -26,29 +26,7 @@ type diffOptions struct {
 	meta               report.Meta
 }
 
-func newDiffCommand() *cobra.Command {
-	o := &diffOptions{}
-	cmd := &cobra.Command{
-		Use:   "diff",
-		Short: "Compare two rendered manifest trees and write an HTML report",
-		Long: `Compare two trees of rendered manifests, as "argocd-hydrate" writes them, and
-write a self-contained HTML report of what changed. Each input is a directory
-or a zip archive of one.
-
-Pull request details are optional. Inside GitHub Actions the repository, base
-and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
-and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
-from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
-needed there.`,
-		Example: `  argocd-hydrate diff --base base-manifests --head head-manifests
-  argocd-hydrate diff --base base-manifests --head head-manifests --summary diff.md
-  argocd-hydrate diff --base base.zip --head head.zip --output diff.html \
-      --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
-      --base-ref master --head-ref feat/nginx --author alice`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runDiff(cmd, o)
-		},
-	}
+func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "Base manifest tree: a directory or a .zip (required)")
 	f.StringVar(&o.head, "head", "", "Head manifest tree: a directory or a .zip (required)")
@@ -69,7 +47,6 @@ needed there.`,
 	f.StringVar(&o.meta.PRURL, "pr-url", "", "Pull request URL (default: derived from --repo and --pr-number on github.com)")
 	_ = cmd.MarkFlagRequired("base")
 	_ = cmd.MarkFlagRequired("head")
-	return cmd
 }
 
 func runDiff(cmd *cobra.Command, o *diffOptions) error {
@@ -94,7 +71,7 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	}
 
 	o.meta.GeneratedAt = time.Now().UTC()
-	o.meta.Tool = "argocd-hydrate " + version.Version
+	o.meta.Tool = "argocd-diff " + version.Version
 	if o.meta.Title == "" {
 		switch {
 		case o.meta.Repo != "" && o.meta.PRNumber > 0:

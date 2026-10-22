@@ -1,80 +1,75 @@
-# argocd-hydrate
+# argocd-diff
 
-> Kubernetes manifest "Hydration" refers to the process of turning abstract or templated Kubernetes manifest files into complete, environment-specific manifests ready for deployment. This is a key concept in GitOps and Kubernetes configuration management practices.
+argocd-diff shows what a pull request to a GitOps repository does to the
+Kubernetes manifests ArgoCD would apply. `argocd-diff hydrate` renders ArgoCD
+Applications into a tree of plain manifests, the way ArgoCD's repo server
+would, and `argocd-diff` compares two such trees, from the base and the head
+of a pull request, into a self-contained HTML report and a Markdown summary
+for a pull request comment. It supports Applications with a single source and
+multi-source Applications, with Helm chart and directory sources. It was
+called argocd-hydrate until v0.4.0.
 
-This tool hydrates ArgoCD Applications into Kubernetes manifests based on ArgoCD Application CRD, and diffs two such renders into an HTML report. It supports applications with a single source, as well as multi-source applications. Useful for building Rendered Manifests GitOps pattern or previewing real unabstracted PR diffs.
+## Diffing two renders
 
-## Features
+```console
+$ argocd-diff --help
+Compare two trees of rendered manifests, as "argocd-diff hydrate" writes
+them, and write a self-contained HTML report of what changed. Each input is a
+directory or a zip archive of one.
 
-- Load and parse ArgoCD Application CRDs from YAML file(s)
-- Pulls all helm charts from remotes to local cache, so that subsequent runs are much faster
-- Process Helm chart sources using the Helm Go SDK
-- Process directory-based sources, with support for recursive traversal
-- Output rendered manifests to a specified directory
-- Diff two rendered trees into a self-contained HTML report (`argocd-hydrate diff`)
-
-## Usage
-
-```bash
-~ argocd-hydrate --help
-ArgoCD Hydrate - Render ArgoCD Applications into Kubernetes manifests
-
-This tool takes ArgoCD Application custom resources and renders Kubernetes manifests. It supports applications that use Helm charts
-and directory-based sources. "argocd-hydrate diff" compares two rendered trees and writes an HTML report.
+Pull request details are optional. Inside GitHub Actions the repository, base
+and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
+and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
+from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
+needed there.
 
 Usage:
-  argocd-hydrate [flags]
-  argocd-hydrate [command]
+  argocd-diff [flags]
+  argocd-diff [command]
 
 Examples:
-  # Hydrate with the default values
-  argocd-hydrate
+  # Render the two trees to compare, from each checkout
+  argocd-diff hydrate --applications manifests/applications.yaml --output base-manifests
+  argocd-diff hydrate --applications manifests/applications.yaml --output head-manifests
 
-  # Specify custom applications file and output directory
-  argocd-hydrate --applications=apps/applications.yaml --output=rendered
-
-  # Compare two rendered trees (directories or zip files) into an HTML report
-  argocd-hydrate diff --base base-manifests --head head-manifests --output diff.html
+  argocd-diff --base base-manifests --head head-manifests
+  argocd-diff --base base-manifests --head head-manifests --summary diff.md
+  argocd-diff --base base.zip --head head.zip --output diff.html \
+      --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
+      --base-ref master --head-ref feat/nginx --author alice
 
 Available Commands:
   completion  Generate the autocompletion script for the specified shell
-  diff        Compare two rendered manifest trees and write an HTML report
   help        Help about any command
   hydrate     Render ArgoCD applications into Kubernetes manifests
 
 Flags:
-      --applications string   Path to the file containing ArgoCD Application CRDs (default "manifests/applications.yaml")
-      --charts-dir string     Directory for storing downloaded Helm charts (default "cache")
-  -h, --help                  help for argocd-hydrate
-      --kube-version string   Kubernetes version to use for rendering Helm charts (default "1.35.6")
-      --output string         Output directory for the rendered manifests (default "manifests")
-  -v, --version               version for argocd-hydrate
+      --author string              Pull request author
+      --base string                Base manifest tree: a directory or a .zip (required)
+      --base-applications string   ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)
+      --base-ref string            Base branch or ref
+      --context int                Unchanged lines kept around each change (default 3)
+      --full-text-limit int        Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never) (default 2000)
+      --head string                Head manifest tree: a directory or a .zip (required)
+      --head-applications string   ArgoCD Application resources of the head tree (default: applications.yaml in the head tree, if present)
+      --head-ref string            Head branch or ref
+  -h, --help                       help for argocd-diff
+      --output string              Output HTML file (default "diff.html")
+      --pr-number int              Pull request number
+      --pr-title string            Pull request title
+      --pr-url string              Pull request URL (default: derived from --repo and --pr-number on github.com)
+      --repo string                Repository as owner/name
+      --summary string             Also write a Markdown summary, for a pull request comment, to this file
+      --title string               Report title (default: the pull request, or the input paths)
+  -v, --version                    version for argocd-diff
 
-Use "argocd-hydrate [command] --help" for more information about a command.
+Use "argocd-diff [command] --help" for more information about a command.
 ```
 
-Running with no subcommand hydrates, as earlier versions did. Each
-application is written to `<output>/<application>/<namespace>/<Kind>/<name>.yaml`
-(`<output>/<application>/<Kind>/<name>.yaml` for cluster-scoped objects), with
-Secret values redacted. Progress is logged to stderr; an error is reported
-once and exits with status 1. Charts are rendered for `--kube-version` the way
-`helm template --kube-version` renders them, so a chart whose `kubeVersion`
-constraint excludes it fails with a message that says so.
-
-## Diffing two renders
-
-`argocd-hydrate diff` compares two rendered trees, as the command above writes
-them, and produces a self-contained HTML report: files grouped by application,
-unified or split view, context expansion, filters by status, application,
-project, cluster and kind, intra-line change highlighting, dark mode, and
-keyboard navigation. Each input is a directory or a zip archive of one. Only
+The report groups files by application and offers a unified or split view,
+context expansion, filters by status, application, project, cluster and kind,
+intra-line change highlighting, dark mode and keyboard navigation. Only
 `.yaml`/`.yml` files take part.
-
-```bash
-argocd-hydrate diff --base base-manifests --head head-manifests --output diff.html \
-  --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
-  --base-ref master --head-ref feat/nginx --author alice
-```
 
 In GitHub Actions, `--repo`, `--base-ref` and `--head-ref` default to
 `GITHUB_REPOSITORY`, `GITHUB_BASE_REF` and `GITHUB_HEAD_REF`, and `--pr-number`
@@ -103,6 +98,60 @@ table with one row per application, project and cluster, collapsed when
 it has more than eight rows. A pull request that renders to no change says so
 in one line.
 
+## Hydrating
+
+```console
+$ argocd-diff hydrate --help
+Render ArgoCD Application resources into the Kubernetes manifests they would
+deploy. Helm chart sources are pulled and templated, directory sources are read
+as they are, and Secret values are redacted. Each application is written to
+<output>/<application>/<namespace>/<Kind>/<name>.yaml, or
+<output>/<application>/<Kind>/<name>.yaml for a cluster-scoped object.
+
+Usage:
+  argocd-diff hydrate [flags]
+
+Examples:
+  argocd-diff hydrate
+  argocd-diff hydrate --applications apps/applications.yaml --output rendered --kube-version 1.35.6
+
+Flags:
+      --applications string   Path to the file containing ArgoCD Application CRDs (default "manifests/applications.yaml")
+      --charts-dir string     Directory for storing downloaded Helm charts (default "cache")
+  -h, --help                  help for hydrate
+      --kube-version string   Kubernetes version to use for rendering Helm charts (default "1.35.6")
+      --output string         Output directory for the rendered manifests (default "manifests")
+```
+
+Charts are pulled once into `--charts-dir` and reused on later runs, so cache
+that directory in CI. They are rendered for `--kube-version` the way
+`helm template --kube-version` renders them, so a chart whose `kubeVersion`
+constraint excludes it fails with a message that says so. Progress is logged
+to stderr; an error is reported once and exits with status 1.
+
+## GitHub Action
+
+This repository is also a GitHub Action that installs the release it is used
+at:
+
+```yaml
+- uses: kazysgurskas/argocd-diff@v1.0.0
+- run: argocd-diff hydrate --kube-version 1.35.6
+```
+
+When the action is pinned by commit SHA, name the release to install:
+
+```yaml
+- uses: kazysgurskas/argocd-diff@<sha> # v1.0.0
+  with:
+    version: v1.0.0
+```
+
+A pull request workflow checks out the base and the head of the pull request,
+renders each with `argocd-diff hydrate`, runs `argocd-diff --base --head
+--summary`, publishes the HTML where reviewers can open it, and posts the
+summary as a comment.
+
 ## Smoke test
 
 `make smoke` hydrates the example under [`test/smoke/`](test/smoke/) for a base
@@ -110,19 +159,13 @@ and a head commit and diffs them into `test/smoke/out/example/diff.html`. See
 [test/smoke/README.md](test/smoke/README.md) for using it with your own
 scenarios.
 
-## Local Development and Testing
+## Docker
 
-To test locally:
-
-1. Clone the repository
-2. Build the Docker image:
-   ```bash
-   docker build -t argocd-hydrate .
-   ```
-3. Run the image:
-   ```bash
-   docker run -v $(pwd):/workspace argocd-hydrate --applications=/workspace/manifests/applications.yaml --output=/workspace/hydrated-manifests
-   ```
+```bash
+docker build -t argocd-diff .
+docker run -v $(pwd):/workspace argocd-diff hydrate \
+  --applications=/workspace/manifests/applications.yaml --output=/workspace/rendered
+```
 
 ## License
 
