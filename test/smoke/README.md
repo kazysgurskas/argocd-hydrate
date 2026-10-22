@@ -8,14 +8,16 @@ $ make smoke          # or ./test/smoke/run.sh
 open .../test/smoke/out/example/diff.html
 ```
 
-`example/` is committed: two applications with directory sources, in a `base`
-and a `head` version. The scenario is an Ingress to Gateway API migration in
+`example/` is committed: `base/` and `head/` are two checkouts of a GitOps
+repository, each with an `applications.yaml` of two directory-source
+applications, and the script runs the one-command form that hydrates both and
+diffs them. The scenario is an Ingress to Gateway API migration in
 `myapp` (an `Ingress` deleted, an `HTTPRoute`, `ServiceAccount`,
 `PodDisruptionBudget` and `NetworkPolicy` added, a `Deployment`, `Service`,
 `ConfigMap`, `Secret` and `HorizontalPodAutoscaler` modified) plus an image
 bump in `otherapp`.
 
-Everything the run produces goes under `out/` and `cache/`, which are
-gitignored, as is `local/`: put your own scenarios there, for example a copy of
-a real repository's `applications.yaml` for two commits, and run
-`./test/smoke/run.sh local/<name>`.
+Everything the run produces goes under `out/` (the rendered trees as `base/`
+and `head/`, `diff.html` and `diff.md`) and `cache/`, which are gitignored, as
+is `local/`: put your own scenarios there, for example two checkouts of a real
+repository with their `applications.yaml`, and run `./test/smoke/run.sh local/<name>`.

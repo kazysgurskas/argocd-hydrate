@@ -12,6 +12,8 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/kazysgurskas/argocd-diff/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/helm"
+	"github.com/kazysgurskas/argocd-diff/internal/hydrate"
 	"github.com/kazysgurskas/argocd-diff/internal/report"
 	"github.com/kazysgurskas/argocd-diff/internal/version"
 )
@@ -21,9 +23,15 @@ type diffOptions struct {
 	summary            string
 	baseApplications   string
 	headApplications   string
-	context            int
-	fullTextLimit      int
-	meta               report.Meta
+	// applications, when set, means base and head are checkouts holding
+	// this Application file, to hydrate before diffing.
+	applications  string
+	rendered      string
+	chartsDir     string
+	kubeVersion   string
+	context       int
+	fullTextLimit int
+	meta          report.Meta
 }
 
 func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
@@ -34,6 +42,11 @@ func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
 	f.StringVar(&o.summary, "summary", "", "Also write a Markdown summary, for a pull request comment, to this file")
 	f.StringVar(&o.baseApplications, "base-applications", "", "ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)")
 	f.StringVar(&o.headApplications, "head-applications", "", "ArgoCD Application resources of the head tree (default: applications.yaml in the head tree, if present)")
+	f.StringVar(&o.applications, "applications", "",
+		"Hydrate first: the ArgoCD Application file inside each tree, which is then a checkout of the repository rather than rendered manifests")
+	f.StringVar(&o.rendered, "rendered", "", "With --applications, keep the rendered trees in this directory as base/ and head/ (default: a temporary directory)")
+	f.StringVar(&o.chartsDir, "charts-dir", defaultChartsDir, "With --applications, directory for storing downloaded Helm charts")
+	f.StringVar(&o.kubeVersion, "kube-version", helm.DefaultKubeVersion, "With --applications, Kubernetes version to use for rendering Helm charts")
 	f.IntVar(&o.context, "context", diff.DefaultContext, "Unchanged lines kept around each change")
 	f.IntVar(&o.fullTextLimit, "full-text-limit", diff.DefaultFullTextLimit,
 		"Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never)")
@@ -61,9 +74,29 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	}
 	defer cleanupHead()
 
-	apps, err := applicationsOf(baseDir, o.baseApplications, headDir, o.headApplications)
-	if err != nil {
-		return err
+	var apps diff.Applications
+	if o.applications == "" {
+		apps, err = applicationsOf(baseDir, o.baseApplications, headDir, o.headApplications)
+		if err != nil {
+			return err
+		}
+	} else {
+		rendered := o.rendered
+		if rendered == "" {
+			if rendered, err = os.MkdirTemp("", "argocd-diff-"); err != nil {
+				return err
+			}
+			defer func() { _ = os.RemoveAll(rendered) }()
+		}
+		opts := hydrate.Options{ChartsDir: o.chartsDir, KubeVersion: o.kubeVersion}
+		var baseApps, headApps diff.Applications
+		if baseDir, baseApps, err = hydrateSide(baseDir, filepath.Join(rendered, "base"), o.applications, opts); err != nil {
+			return fmt.Errorf("base: %w", err)
+		}
+		if headDir, headApps, err = hydrateSide(headDir, filepath.Join(rendered, "head"), o.applications, opts); err != nil {
+			return fmt.Errorf("head: %w", err)
+		}
+		apps = baseApps.Merge(headApps)
 	}
 	result, err := diff.Compare(baseDir, headDir, diff.Options{Context: o.context, FullTextLimit: o.fullTextLimit, Applications: apps})
 	if err != nil {
@@ -116,6 +149,18 @@ func writeSummary(path string, result *diff.Result) error {
 		return fmt.Errorf("close %s: %w", path, err)
 	}
 	return nil
+}
+
+// hydrateSide renders the Applications in the file at applications, relative
+// to the checkout at root, into out, and returns out with the index of what
+// it rendered.
+func hydrateSide(root, out, applications string, opts hydrate.Options) (string, diff.Applications, error) {
+	opts.Root = root
+	apps, err := hydrateTree(filepath.Join(root, applications), out, opts)
+	if err != nil {
+		return "", nil, err
+	}
+	return out, diff.IndexApplications(apps), nil
 }
 
 // applicationsOf reads the Application resources of both trees: the given

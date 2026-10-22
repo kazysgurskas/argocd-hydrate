@@ -20,17 +20,20 @@ func New() *cobra.Command {
 		Short: "Diff rendered ArgoCD application manifests",
 		Long: `Compare two trees of rendered manifests, as "argocd-diff hydrate" writes
 them, and write a self-contained HTML report of what changed. Each input is a
-directory or a zip archive of one.
+directory or a zip archive of one. With --applications, each input is instead
+a checkout of the GitOps repository holding that Application file, and both
+are hydrated first, so one command does the whole job.
 
 Pull request details are optional. Inside GitHub Actions the repository, base
 and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
 and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
 from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
 needed there.`,
-		Example: `  # Render the two trees to compare, from each checkout
-  argocd-diff hydrate --applications manifests/applications.yaml --output base-manifests
-  argocd-diff hydrate --applications manifests/applications.yaml --output head-manifests
+		Example: `  # Hydrate the base and head checkouts of a pull request and diff them
+  argocd-diff --base base-checkout --head head-checkout --applications manifests/applications.yaml \
+      --kube-version 1.35.6 --charts-dir charts --rendered rendered --summary diff.md
 
+  # Or diff two trees rendered earlier with "argocd-diff hydrate"
   argocd-diff --base base-manifests --head head-manifests
   argocd-diff --base base-manifests --head head-manifests --summary diff.md
   argocd-diff --base base.zip --head head.zip --output diff.html \

@@ -1,5 +1,6 @@
 # Two ArgoCD Applications with directory sources, as the root chart of a
-# GitOps repo would render them. Paths are relative to test/smoke/.
+# GitOps repo would render them. Paths are relative to this directory, the
+# checkout.
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -13,7 +14,7 @@ spec:
   source:
     repoURL: https://github.com/example/gitops
     targetRevision: HEAD
-    path: example/head/myapp
+    path: myapp
     directory:
       recurse: true
 ---
@@ -29,6 +30,6 @@ spec:
   source:
     repoURL: https://github.com/example/gitops
     targetRevision: HEAD
-    path: example/head/otherapp
+    path: otherapp
     directory:
       recurse: true

@@ -33,7 +33,7 @@ func TestRenderDirectory(t *testing.T) {
 	})
 	source := &application.Source{Path: root, Directory: &application.DirectorySource{}}
 
-	flat, err := renderDirectory(source)
+	flat, err := renderDirectory(source, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestRenderDirectory(t *testing.T) {
 	}
 
 	source.Directory.Recurse = true
-	deep, err := renderDirectory(source)
+	deep, err := renderDirectory(source, Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,11 +58,11 @@ func TestRenderDirectoryRejectsFile(t *testing.T) {
 	root := t.TempDir()
 	writeTree(t, root, map[string]string{"a.yaml": "kind: A\n"})
 	source := &application.Source{Path: filepath.Join(root, "a.yaml"), Directory: &application.DirectorySource{}}
-	if _, err := renderDirectory(source); err == nil || !strings.Contains(err.Error(), "not a directory") {
+	if _, err := renderDirectory(source, Options{}); err == nil || !strings.Contains(err.Error(), "not a directory") {
 		t.Errorf("want a 'not a directory' error, got %v", err)
 	}
 	source.Path = filepath.Join(root, "missing")
-	if _, err := renderDirectory(source); err == nil {
+	if _, err := renderDirectory(source, Options{}); err == nil {
 		t.Error("want an error for a missing directory")
 	}
 }
@@ -87,5 +87,23 @@ func TestRenderSkipsValuesRefAndRejectsBareSource(t *testing.T) {
 	app.Spec.Sources = append(app.Spec.Sources, &application.Source{RepoURL: "https://github.com/example/gitops", Path: "apps/web"})
 	if _, err := Render(app, Options{}); err == nil {
 		t.Error("a source with neither chart nor directory must be refused")
+	}
+}
+
+// TestRenderDirectoryResolvesAgainstRoot pins that source paths are relative
+// to Options.Root, the checkout, and not to the working directory.
+func TestRenderDirectoryResolvesAgainstRoot(t *testing.T) {
+	root := t.TempDir()
+	writeTree(t, root, map[string]string{"apps/web/a.yaml": "kind: A\n"})
+	source := &application.Source{Path: "apps/web", Directory: &application.DirectorySource{}}
+	out, err := renderDirectory(source, Options{Root: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if out != "---\nkind: A" {
+		t.Errorf("got %q", out)
+	}
+	if _, err := renderDirectory(source, Options{}); err == nil {
+		t.Error("the path must not resolve against the working directory when a root is meant")
 	}
 }

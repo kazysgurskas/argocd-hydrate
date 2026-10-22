@@ -13,6 +13,10 @@ import (
 	"github.com/kazysgurskas/argocd-diff/internal/hydrate"
 )
 
+// defaultChartsDir is where pulled charts are kept unless --charts-dir says
+// otherwise.
+const defaultChartsDir = "cache"
+
 type hydrateOptions struct {
 	applications string
 	output       string
@@ -46,35 +50,40 @@ func addHydrateFlags(cmd *cobra.Command, o *hydrateOptions) {
 		"Path to the file containing ArgoCD Application CRDs")
 	f.StringVar(&o.output, "output", "manifests",
 		"Output directory for the rendered manifests")
-	f.StringVar(&o.chartsDir, "charts-dir", "cache",
+	f.StringVar(&o.chartsDir, "charts-dir", defaultChartsDir,
 		"Directory for storing downloaded Helm charts")
 	f.StringVar(&o.kubeVersion, "kube-version", helm.DefaultKubeVersion,
 		"Kubernetes version to use for rendering Helm charts")
 }
 
-// runHydrate renders every application in o.applications and writes each
-// manifest to o.output/<application>/<manifest path>.
 func runHydrate(o *hydrateOptions) error {
-	applications, err := application.Load(o.applications)
+	_, err := hydrateTree(o.applications, o.output, hydrate.Options{ChartsDir: o.chartsDir, KubeVersion: o.kubeVersion})
+	return err
+}
+
+// hydrateTree renders every Application in the file at applications and
+// writes each manifest to out/<application>/<manifest path>. It returns the
+// Applications it read.
+func hydrateTree(applications, out string, opts hydrate.Options) ([]application.Application, error) {
+	apps, err := application.Load(applications)
 	if err != nil {
-		return fmt.Errorf("load applications: %w", err)
+		return nil, fmt.Errorf("load applications: %w", err)
 	}
-	slog.Info("loaded applications", "path", o.applications, "count", len(applications))
-	if err := os.MkdirAll(o.output, 0o755); err != nil {
-		return err
+	slog.Info("loaded applications", "path", applications, "count", len(apps))
+	if err := os.MkdirAll(out, 0o755); err != nil {
+		return nil, err
 	}
 
-	opts := hydrate.Options{ChartsDir: o.chartsDir, KubeVersion: o.kubeVersion}
-	for _, app := range applications {
+	for _, app := range apps {
 		name := app.Metadata.Name
 		slog.Info("hydrating application", "application", name)
-		dir := filepath.Join(o.output, name)
+		dir := filepath.Join(out, name)
 		if err := os.MkdirAll(dir, 0o755); err != nil {
-			return err
+			return nil, err
 		}
 		manifests, err := hydrate.Render(app, opts)
 		if err != nil {
-			return fmt.Errorf("hydrate %s: %w", name, err)
+			return nil, fmt.Errorf("hydrate %s: %w", name, err)
 		}
 		if len(manifests) == 0 {
 			slog.Warn("no manifests rendered", "application", name)
@@ -83,13 +92,13 @@ func runHydrate(o *hydrateOptions) error {
 		for _, m := range manifests {
 			path := filepath.Join(dir, m.Path())
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				return err
+				return nil, err
 			}
 			if err := os.WriteFile(path, []byte(m.Content), 0o644); err != nil {
-				return err
+				return nil, err
 			}
 		}
 		slog.Info("wrote manifests", "application", name, "count", len(manifests))
 	}
-	return nil
+	return apps, nil
 }
