@@ -1,3 +1,16 @@
+<p align="center">
+  <img src="docs/logo.jpg" alt="argocd-diff: an octopus in a diving helmet comparing two manifests" width="260">
+</p>
+
+<p align="center">
+  <a href="https://github.com/kazysgurskas/argocd-diff/actions/workflows/ci.yaml"><img src="https://github.com/kazysgurskas/argocd-diff/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
+  <a href="https://goreportcard.com/report/github.com/kazysgurskas/argocd-diff"><img src="https://goreportcard.com/badge/github.com/kazysgurskas/argocd-diff" alt="Go Report Card"></a>
+  <a href="https://pkg.go.dev/github.com/kazysgurskas/argocd-diff"><img src="https://pkg.go.dev/badge/github.com/kazysgurskas/argocd-diff.svg" alt="Go Reference"></a>
+  <a href="https://github.com/kazysgurskas/argocd-diff/releases/latest"><img src="https://img.shields.io/github/v/release/kazysgurskas/argocd-diff" alt="Latest release"></a>
+  <img src="https://img.shields.io/github/go-mod/go-version/kazysgurskas/argocd-diff" alt="Go version">
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/kazysgurskas/argocd-diff" alt="License"></a>
+</p>
+
 # argocd-diff
 
 argocd-diff renders ArgoCD Applications and shows
@@ -21,6 +34,28 @@ Supported sources are Helm charts from HTTP and OCI repositories and
 directories of plain manifests, in both single-source and multi-source
 Applications. Private chart registries work the same way as with `helm pull`:
 log in with `helm registry login` or a Docker credential helper first.
+
+## Install
+
+Download the archive for your platform from the
+[releases page](https://github.com/kazysgurskas/argocd-diff/releases),
+verify it against `checksums.txt`, and put `argocd-diff` on your `PATH`. Or
+build it with Go:
+
+```bash
+go install github.com/kazysgurskas/argocd-diff/cmd/argocd-diff@latest
+```
+
+A container image is published to GitHub Container Registry with every
+release, as `ghcr.io/kazysgurskas/argocd-diff:<version>-amd64` and
+`-arm64`:
+
+```bash
+docker run --rm ghcr.io/kazysgurskas/argocd-diff:1.0.0-amd64 --version
+```
+
+In GitHub Actions, use this repository as an action; see
+[GitHub Action](#github-action).
 
 ## Usage
 
