@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/logo.jpg" alt="argocd-diff: an octopus in a diving helmet comparing two manifests" width="260">
+</p>
+
 # argocd-diff
 
 argocd-diff renders ArgoCD Applications and shows
