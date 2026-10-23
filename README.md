@@ -1,13 +1,26 @@
 # argocd-diff
 
-argocd-diff shows what a pull request to a GitOps repository does to the
-Kubernetes manifests ArgoCD would apply. Given the base and head checkouts of
-the pull request, it renders the ArgoCD Applications of each into plain
-manifests, the way ArgoCD's repo server would, and compares the two renders
-into a self-contained HTML report and a Markdown summary for a pull request
-comment. It supports Applications with a single source and multi-source
-Applications, with Helm chart and directory sources. It was called
-argocd-hydrate through the 0.4 releases.
+argocd-diff renders ArgoCD Applications and shows
+what a pull request changes in the resulting Kubernetes manifests. It needs no
+ArgoCD server, cluster or kubeconfig. It reads Application resources from a
+checkout of the GitOps repository, pulls and templates Helm charts with the
+Helm SDK, copies directory sources as they are, and writes the manifests the
+way ArgoCD's repo server would, with Secret values redacted. The only network
+access is to the chart repositories the Applications reference, and pulled
+charts are cached between runs.
+
+Given the base and head checkouts of a pull request, it renders both, diffs
+them, and writes a self-contained HTML report plus a Markdown summary for a
+pull request comment. Unlike `argocd app diff`, which compares the desired
+state against a live cluster, argocd-diff compares two versions of the desired
+state. That makes it usable in CI on every pull request, in repositories whose
+ArgoCD isn't reachable from CI, and with the rendered-manifests pattern, where
+the rendered tree is what gets reviewed and committed.
+
+Supported sources are Helm charts from HTTP and OCI repositories and
+directories of plain manifests, in both single-source and multi-source
+Applications. Private chart registries work the same way as with `helm pull`:
+log in with `helm registry login` or a Docker credential helper first.
 
 ## Usage
 
@@ -18,14 +31,18 @@ argocd-diff --base base-checkout --head head-checkout \
   --output diff.html --summary diff.md
 ```
 
-One command does the whole job. `--applications` names the file of ArgoCD
-Application resources inside each checkout; source paths in those
-Applications (`path:`, `$values/…`) are resolved against the checkout they
-belong to. Both sides are rendered, then diffed. The rendered trees go to
-`--rendered`, replacing its `base/` and `head/`, where other tools such as
-kubeconform can scan them, or to a temporary directory.
-Charts are pulled once into `--charts-dir` and reused on later runs, so cache
-that directory in CI.
+`--applications` is the path, inside each
+checkout, of the file with the ArgoCD Application resources — for example the
+output of `helm template` on an app-of-apps chart, or a plain file of
+Application manifests. Source paths in those Applications (`path:`,
+`$values/…`) are resolved against their own checkout. Both sides are rendered
+and then diffed. The rendered trees are written to `--rendered` (replacing its
+`base/` and `head/`), where other tools such as kubeconform can read them, or
+to a temporary directory if the flag is omitted. Since there is no cluster to
+ask, charts are rendered for `--kube-version`; a chart whose `kubeVersion`
+constraint doesn't match fails with an error saying so. Charts are downloaded
+once into `--charts-dir` and reused on later runs, so cache that directory in
+CI.
 
 ```console
 $ argocd-diff --help
@@ -92,43 +109,44 @@ Use "argocd-diff [command] --help" for more information about a command.
 
 ## The report
 
-The report groups files by application and offers a unified or split view,
+The report groups files by application and offers unified and split views,
 context expansion, filters by status, application, project, cluster and kind,
 intra-line change highlighting, dark mode and keyboard navigation. Only
-`.yaml`/`.yml` files take part.
+`.yaml`/`.yml` files are included.
 
 In GitHub Actions, `--repo`, `--base-ref` and `--head-ref` default to
 `GITHUB_REPOSITORY`, `GITHUB_BASE_REF` and `GITHUB_HEAD_REF`, and `--pr-number`
-to the number in `GITHUB_REF` on `pull_request` events (or to `GITHUB_PR_NUMBER`
-if your workflow exports it), so only `--base` and `--head` are needed.
-`--context` sets the unchanged lines kept around a change (default 3) and
-`--full-text-limit` the largest modified file whose whole text is embedded so
-context can be expanded in the viewer (default 2000 lines).
+is taken from `GITHUB_REF` on `pull_request` events (or from `GITHUB_PR_NUMBER`
+if your workflow exports it), so only `--base` and `--head` are required.
+`--context` sets how many unchanged lines are kept around each change
+(default 3) and `--full-text-limit` the largest modified file whose full text
+is embedded so context can be expanded in the viewer (default 2000 lines).
 
-Each file is labelled with the ArgoCD Application it was rendered for (the
-first path segment, which is the Application's `metadata.name`) and with that
-Application's `spec.project` and `spec.destination.name`. With
-`--applications` those come from the Applications just rendered, and
-`--base-applications`/`--head-applications` are refused. When diffing trees
-rendered earlier, they come from `applications.yaml` at the root of each tree
-when it exists, or from the files given with `--base-applications` and
-`--head-applications`; without them, files still group by Application and
-only the project and cluster labels stay empty.
+Each file is labelled with the Application it was rendered for (the first
+path segment, i.e. the Application's `metadata.name`), plus that Application's
+`spec.project` and `spec.destination.name`. With `--applications` these come
+from the Applications just rendered, and `--base-applications`/
+`--head-applications` are not allowed. When diffing previously rendered trees,
+they come from `applications.yaml` at the root of each tree if present, or
+from `--base-applications` and `--head-applications`. Without either, files
+are still grouped by Application; only the project and cluster labels stay
+empty.
 
-The report embeds the diff as JSON and renders it in the browser, so a page
-with hundreds of changed manifests stays small and only draws what is on
-screen. Secrets are already redacted by the hydrate step.
+The diff is embedded as JSON and rendered in the browser, so a report with
+hundreds of changed manifests stays small and only draws what is on screen.
+Secrets are redacted during hydration.
 
-`--summary <file>` also writes a Markdown summary for a pull request comment:
-a totals line ("11 manifests changed: 4 added, 6 modified, 1 deleted") and a
-table with one row per application, project and cluster, collapsed when
-it has more than eight rows. A pull request that renders to no change says so
-in one line.
+`--summary <file>` writes a Markdown summary for a pull request comment: a
+totals line ("11 manifests changed: 4 added, 6 modified, 1 deleted") and a
+table with one row per application, project and cluster, collapsed when it
+has more than eight rows. A pull request with no rendered changes gets a
+one-line note saying so.
 
-## Hydrating on its own
+## Rendering on its own
 
-`argocd-diff hydrate` renders one checkout, for the rendered-manifests
-pattern or for diffing trees rendered at different times with
+`argocd-diff hydrate` renders a single checkout into a tree of manifests. Use
+it for the rendered-manifests pattern, for review tools that read plain
+manifests, or to diff trees rendered at different times with
 `argocd-diff --base <tree> --head <tree>`.
 
 ```console
@@ -154,15 +172,13 @@ Flags:
       --output string         Output directory for the rendered manifests (default "manifests")
 ```
 
-Charts are rendered for `--kube-version` the way `helm template
---kube-version` renders them, so a chart whose `kubeVersion` constraint
-excludes it fails with a message that says so. Progress is logged to stderr;
-an error is reported once and exits with status 1.
+Progress is logged to stderr. On error, the message is printed once and the
+exit status is 1.
 
 ## GitHub Action
 
-This repository is also a GitHub Action; it installs the release whose tag it
-is used with:
+This repository contains a GitHub Action. It installs the release matching the
+tag it is used with:
 
 ```yaml
 - uses: kazysgurskas/argocd-diff@v1.0.0
@@ -172,7 +188,7 @@ is used with:
       --output diff.html --summary diff.md
 ```
 
-When the action is pinned by commit SHA, name the release to install:
+When pinning the action by commit SHA, specify the release to install:
 
 ```yaml
 - uses: kazysgurskas/argocd-diff@<sha> # v1.0.0
@@ -180,10 +196,12 @@ When the action is pinned by commit SHA, name the release to install:
     version: v1.0.0
 ```
 
-A pull request workflow checks out the base and the head of the pull request
-into two directories, produces the Application file in each (for example with
-`helm template` of an app-of-apps chart), runs the command above, publishes
-`diff.html` where reviewers can open it, and posts `diff.md` as a comment.
+A typical pull request workflow checks out the base and head of the pull
+request into two directories, produces the Application file in each (for
+example with `helm template` on an app-of-apps chart), runs the command above,
+publishes `diff.html` somewhere reviewers can open it, and posts `diff.md` as
+a comment. None of this needs credentials for ArgoCD or the clusters, only for
+private chart registries.
 
 ## Smoke test
 
