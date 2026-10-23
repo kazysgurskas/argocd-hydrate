@@ -1,6 +1,8 @@
-<img src="docs/logo.jpg" alt="argocd-diff: an octopus in a diving helmet comparing two manifests" width="260">
+<p align="center">
+  <img src="docs/logo.jpg" alt="argocd-diff: an octopus in a diving helmet comparing two manifests" width="260">
+</p>
 
-<p>
+<p align="center">
   <a href="https://github.com/kazysgurskas/argocd-diff/actions/workflows/ci.yaml"><img src="https://github.com/kazysgurskas/argocd-diff/actions/workflows/ci.yaml/badge.svg" alt="CI"></a>
   <a href="https://goreportcard.com/report/github.com/kazysgurskas/argocd-diff"><img src="https://goreportcard.com/badge/github.com/kazysgurskas/argocd-diff" alt="Go Report Card"></a>
   <a href="https://pkg.go.dev/github.com/kazysgurskas/argocd-diff"><img src="https://pkg.go.dev/badge/github.com/kazysgurskas/argocd-diff.svg" alt="Go Reference"></a>
