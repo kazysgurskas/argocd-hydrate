@@ -5,7 +5,7 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 // Application is what the report shows about the ArgoCD Application a
@@ -18,7 +18,7 @@ type Application struct {
 }
 
 // Applications indexes Applications by metadata.name, which is also the
-// directory argocd-hydrate writes each Application's manifests to.
+// directory argocd-diff hydrate writes each Application's manifests to.
 type Applications map[string]Application
 
 // LoadApplications reads the ArgoCD Applications in the YAML stream at path
@@ -28,11 +28,16 @@ func LoadApplications(path string) (Applications, error) {
 	if err != nil {
 		return nil, err
 	}
-	apps := make(Applications, len(loaded))
-	for _, app := range loaded {
-		apps[app.Metadata.Name] = Application{Project: app.Spec.Project, Cluster: app.Spec.Destination.Name}
+	return IndexApplications(loaded), nil
+}
+
+// IndexApplications indexes apps by name.
+func IndexApplications(apps []application.Application) Applications {
+	index := make(Applications, len(apps))
+	for _, app := range apps {
+		index[app.Metadata.Name] = Application{Project: app.Spec.Project, Cluster: app.Spec.Destination.Name}
 	}
-	return apps, nil
+	return index
 }
 
 // Merge returns the union of apps and other; other wins for a name both
@@ -65,7 +70,7 @@ type Resource struct {
 }
 
 // resourceFor describes the manifest at path with the given content. The
-// path layout is the one argocd-hydrate writes:
+// path layout is the one argocd-diff hydrate writes:
 //
 //	<application>/<Kind>/<name>.yaml                 cluster-scoped
 //	<application>/<namespace>/<Kind>/<name>.yaml     namespaced

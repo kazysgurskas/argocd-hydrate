@@ -24,7 +24,7 @@ func OpenTree(path string) (dir string, cleanup func(), err error) {
 	if !strings.HasSuffix(strings.ToLower(path), ".zip") {
 		return "", func() {}, fmt.Errorf("%s is neither a directory nor a .zip archive", path)
 	}
-	dir, err = os.MkdirTemp("", "argocd-hydrate-diff-")
+	dir, err = os.MkdirTemp("", "argocd-diff-")
 	if err != nil {
 		return "", func() {}, err
 	}

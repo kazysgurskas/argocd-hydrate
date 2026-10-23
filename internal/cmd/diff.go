@@ -11,9 +11,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
-	"github.com/kazysgurskas/argocd-hydrate/internal/report"
-	"github.com/kazysgurskas/argocd-hydrate/internal/version"
+	"github.com/kazysgurskas/argocd-diff/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/helm"
+	"github.com/kazysgurskas/argocd-diff/internal/hydrate"
+	"github.com/kazysgurskas/argocd-diff/internal/report"
+	"github.com/kazysgurskas/argocd-diff/internal/version"
 )
 
 type diffOptions struct {
@@ -21,34 +23,18 @@ type diffOptions struct {
 	summary            string
 	baseApplications   string
 	headApplications   string
-	context            int
-	fullTextLimit      int
-	meta               report.Meta
+	// applications, when set, means base and head are checkouts holding
+	// this Application file, to hydrate before diffing.
+	applications  string
+	rendered      string
+	chartsDir     string
+	kubeVersion   string
+	context       int
+	fullTextLimit int
+	meta          report.Meta
 }
 
-func newDiffCommand() *cobra.Command {
-	o := &diffOptions{}
-	cmd := &cobra.Command{
-		Use:   "diff",
-		Short: "Compare two rendered manifest trees and write an HTML report",
-		Long: `Compare two trees of rendered manifests, as "argocd-hydrate" writes them, and
-write a self-contained HTML report of what changed. Each input is a directory
-or a zip archive of one.
-
-Pull request details are optional. Inside GitHub Actions the repository, base
-and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
-and the number from GITHUB_REF on pull_request events (refs/pull/<n>/merge) or
-from GITHUB_PR_NUMBER if the workflow exports it, so only --base and --head are
-needed there.`,
-		Example: `  argocd-hydrate diff --base base-manifests --head head-manifests
-  argocd-hydrate diff --base base-manifests --head head-manifests --summary diff.md
-  argocd-hydrate diff --base base.zip --head head.zip --output diff.html \
-      --repo hostinger/kubernetes-apps --pr-number 42 --pr-title "Bump nginx" \
-      --base-ref master --head-ref feat/nginx --author alice`,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runDiff(cmd, o)
-		},
-	}
+func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
 	f := cmd.Flags()
 	f.StringVar(&o.base, "base", "", "Base manifest tree: a directory or a .zip (required)")
 	f.StringVar(&o.head, "head", "", "Head manifest tree: a directory or a .zip (required)")
@@ -56,6 +42,12 @@ needed there.`,
 	f.StringVar(&o.summary, "summary", "", "Also write a Markdown summary, for a pull request comment, to this file")
 	f.StringVar(&o.baseApplications, "base-applications", "", "ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)")
 	f.StringVar(&o.headApplications, "head-applications", "", "ArgoCD Application resources of the head tree (default: applications.yaml in the head tree, if present)")
+	f.StringVar(&o.applications, "applications", "",
+		"Path, inside each tree, of the ArgoCD Application file; each tree is then a checkout of the repository, hydrated before diffing, rather than rendered manifests")
+	f.StringVar(&o.rendered, "rendered", "",
+		"With --applications, keep the rendered trees in this directory, replacing its base/ and head/ (default: a temporary directory)")
+	f.StringVar(&o.chartsDir, "charts-dir", defaultChartsDir, "With --applications, directory for storing downloaded Helm charts")
+	f.StringVar(&o.kubeVersion, "kube-version", helm.DefaultKubeVersion, "With --applications, Kubernetes version to use for rendering Helm charts")
 	f.IntVar(&o.context, "context", diff.DefaultContext, "Unchanged lines kept around each change")
 	f.IntVar(&o.fullTextLimit, "full-text-limit", diff.DefaultFullTextLimit,
 		"Largest modified file, in lines, whose full text is embedded so context can be expanded in the viewer (-1: never)")
@@ -69,7 +61,10 @@ needed there.`,
 	f.StringVar(&o.meta.PRURL, "pr-url", "", "Pull request URL (default: derived from --repo and --pr-number on github.com)")
 	_ = cmd.MarkFlagRequired("base")
 	_ = cmd.MarkFlagRequired("head")
-	return cmd
+	// With --applications the labels come from the Applications being
+	// hydrated, so the per-tree files would be silently ignored.
+	cmd.MarkFlagsMutuallyExclusive("applications", "base-applications")
+	cmd.MarkFlagsMutuallyExclusive("applications", "head-applications")
 }
 
 func runDiff(cmd *cobra.Command, o *diffOptions) error {
@@ -84,9 +79,29 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	}
 	defer cleanupHead()
 
-	apps, err := applicationsOf(baseDir, o.baseApplications, headDir, o.headApplications)
-	if err != nil {
-		return err
+	var apps diff.Applications
+	if o.applications == "" {
+		apps, err = applicationsOf(baseDir, o.baseApplications, headDir, o.headApplications)
+		if err != nil {
+			return err
+		}
+	} else {
+		rendered := o.rendered
+		if rendered == "" {
+			if rendered, err = os.MkdirTemp("", "argocd-diff-"); err != nil {
+				return err
+			}
+			defer func() { _ = os.RemoveAll(rendered) }()
+		}
+		opts := hydrate.Options{ChartsDir: o.chartsDir, KubeVersion: o.kubeVersion}
+		var baseApps, headApps diff.Applications
+		if baseDir, baseApps, err = hydrateSide(baseDir, filepath.Join(rendered, "base"), o.applications, opts); err != nil {
+			return fmt.Errorf("base: %w", err)
+		}
+		if headDir, headApps, err = hydrateSide(headDir, filepath.Join(rendered, "head"), o.applications, opts); err != nil {
+			return fmt.Errorf("head: %w", err)
+		}
+		apps = baseApps.Merge(headApps)
 	}
 	result, err := diff.Compare(baseDir, headDir, diff.Options{Context: o.context, FullTextLimit: o.fullTextLimit, Applications: apps})
 	if err != nil {
@@ -94,7 +109,7 @@ func runDiff(cmd *cobra.Command, o *diffOptions) error {
 	}
 
 	o.meta.GeneratedAt = time.Now().UTC()
-	o.meta.Tool = "argocd-hydrate " + version.Version
+	o.meta.Tool = "argocd-diff " + version.Version
 	if o.meta.Title == "" {
 		switch {
 		case o.meta.Repo != "" && o.meta.PRNumber > 0:
@@ -139,6 +154,21 @@ func writeSummary(path string, result *diff.Result) error {
 		return fmt.Errorf("close %s: %w", path, err)
 	}
 	return nil
+}
+
+// hydrateSide renders the Applications in the file at applications, relative
+// to the checkout at root, into out, replacing whatever an earlier run left
+// there, and returns out with the index of what it rendered.
+func hydrateSide(root, out, applications string, opts hydrate.Options) (string, diff.Applications, error) {
+	if err := os.RemoveAll(out); err != nil {
+		return "", nil, err
+	}
+	opts.Root = root
+	apps, err := hydrateTree(filepath.Join(root, applications), out, opts)
+	if err != nil {
+		return "", nil, err
+	}
+	return out, diff.IndexApplications(apps), nil
 }
 
 // applicationsOf reads the Application resources of both trees: the given

@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/diff"
 )
 
 // MarkdownOptions tune the Markdown summary.

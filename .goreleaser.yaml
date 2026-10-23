@@ -1,4 +1,4 @@
-project_name: argocd-hydrate
+project_name: argocd-diff
 
 builds:
   - env:
@@ -11,13 +11,13 @@ builds:
       - amd64
       - arm64
     ldflags:
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.Version={{.Env.VERSION}}
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.GitCommit={{.Env.GIT_COMMIT}}
-      - -X github.com/kazysgurskas/argocd-hydrate/internal/version.BuildDate={{.Env.BUILD_DATE}}
-    main: ./cmd/argocd-hydrate/main.go
+      - -X github.com/kazysgurskas/argocd-diff/internal/version.Version={{.Env.VERSION}}
+      - -X github.com/kazysgurskas/argocd-diff/internal/version.GitCommit={{.Env.GIT_COMMIT}}
+      - -X github.com/kazysgurskas/argocd-diff/internal/version.BuildDate={{.Env.BUILD_DATE}}
+    main: ./cmd/argocd-diff/main.go
 
 dockers:
-  - id: fireactions-amd64
+  - id: argocd-diff-amd64
     use: buildx
     extra_files:
       - "./"
@@ -26,10 +26,10 @@ dockers:
       - "--platform=linux/amd64"
     goarch: amd64
     image_templates:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}-amd64"
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:latest"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:latest"
     dockerfile: Dockerfile
-  - id: argocd-hydrate-arm64
+  - id: argocd-diff-arm64
     use: buildx
     extra_files:
       - "./"
@@ -38,7 +38,7 @@ dockers:
       - "--platform=linux/arm64"
     goarch: arm64
     image_templates:
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-hydrate:{{ .Env.VERSION }}-arm64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-arm64"
     dockerfile: Dockerfile
 
 archives:

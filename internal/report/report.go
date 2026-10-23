@@ -12,7 +12,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/diff"
+	"github.com/kazysgurskas/argocd-diff/internal/diff"
 )
 
 //go:embed report.html

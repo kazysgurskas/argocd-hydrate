@@ -1,5 +1,5 @@
 // Package diff compares two trees of rendered Kubernetes manifests, as
-// argocd-hydrate writes them, and describes every changed file as a list of
+// argocd-diff hydrate writes them, and describes every changed file as a list of
 // hunks with per-line metadata, ready for a report.
 package diff
 

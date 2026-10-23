@@ -6,11 +6,15 @@ package hydrate
 import (
 	"fmt"
 
-	"github.com/kazysgurskas/argocd-hydrate/internal/application"
+	"github.com/kazysgurskas/argocd-diff/internal/application"
 )
 
 // Options tune a render.
 type Options struct {
+	// Root is the directory that source paths and value files are relative
+	// to: the checkout of the GitOps repository. Empty means the working
+	// directory.
+	Root string
 	// ChartsDir is where pulled charts are kept between runs.
 	ChartsDir string
 	// KubeVersion is the Kubernetes version charts are rendered for.
@@ -32,7 +36,7 @@ func Render(app application.Application, opts Options) ([]Manifest, error) {
 		case source.IsChart():
 			stream, err = renderChart(source, source.ReleaseName(app.Metadata.Name), namespace, opts)
 		case source.IsDirectory():
-			stream, err = renderDirectory(source)
+			stream, err = renderDirectory(source, opts)
 		default:
 			return nil, fmt.Errorf("source %s sets neither chart nor directory", source.RepoURL)
 		}

@@ -2,7 +2,7 @@
 // and .goreleaser.yaml).
 package version
 
-// Set with -X github.com/kazysgurskas/argocd-hydrate/internal/version.<Name>=...
+// Set with -X github.com/kazysgurskas/argocd-diff/internal/version.<Name>=...
 var (
 	Version   = "dev"
 	GitCommit = "none"
