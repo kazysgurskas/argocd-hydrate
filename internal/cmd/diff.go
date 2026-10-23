@@ -43,8 +43,9 @@ func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
 	f.StringVar(&o.baseApplications, "base-applications", "", "ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)")
 	f.StringVar(&o.headApplications, "head-applications", "", "ArgoCD Application resources of the head tree (default: applications.yaml in the head tree, if present)")
 	f.StringVar(&o.applications, "applications", "",
-		"Hydrate first: the ArgoCD Application file inside each tree, which is then a checkout of the repository rather than rendered manifests")
-	f.StringVar(&o.rendered, "rendered", "", "With --applications, keep the rendered trees in this directory as base/ and head/ (default: a temporary directory)")
+		"Path, inside each tree, of the ArgoCD Application file; each tree is then a checkout of the repository, hydrated before diffing, rather than rendered manifests")
+	f.StringVar(&o.rendered, "rendered", "",
+		"With --applications, keep the rendered trees in this directory, replacing its base/ and head/ (default: a temporary directory)")
 	f.StringVar(&o.chartsDir, "charts-dir", defaultChartsDir, "With --applications, directory for storing downloaded Helm charts")
 	f.StringVar(&o.kubeVersion, "kube-version", helm.DefaultKubeVersion, "With --applications, Kubernetes version to use for rendering Helm charts")
 	f.IntVar(&o.context, "context", diff.DefaultContext, "Unchanged lines kept around each change")
@@ -60,6 +61,10 @@ func addDiffFlags(cmd *cobra.Command, o *diffOptions) {
 	f.StringVar(&o.meta.PRURL, "pr-url", "", "Pull request URL (default: derived from --repo and --pr-number on github.com)")
 	_ = cmd.MarkFlagRequired("base")
 	_ = cmd.MarkFlagRequired("head")
+	// With --applications the labels come from the Applications being
+	// hydrated, so the per-tree files would be silently ignored.
+	cmd.MarkFlagsMutuallyExclusive("applications", "base-applications")
+	cmd.MarkFlagsMutuallyExclusive("applications", "head-applications")
 }
 
 func runDiff(cmd *cobra.Command, o *diffOptions) error {
@@ -152,9 +157,12 @@ func writeSummary(path string, result *diff.Result) error {
 }
 
 // hydrateSide renders the Applications in the file at applications, relative
-// to the checkout at root, into out, and returns out with the index of what
-// it rendered.
+// to the checkout at root, into out, replacing whatever an earlier run left
+// there, and returns out with the index of what it rendered.
 func hydrateSide(root, out, applications string, opts hydrate.Options) (string, diff.Applications, error) {
+	if err := os.RemoveAll(out); err != nil {
+		return "", nil, err
+	}
 	opts.Root = root
 	apps, err := hydrateTree(filepath.Join(root, applications), out, opts)
 	if err != nil {

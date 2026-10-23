@@ -7,9 +7,9 @@ manifests, the way ArgoCD's repo server would, and compares the two renders
 into a self-contained HTML report and a Markdown summary for a pull request
 comment. It supports Applications with a single source and multi-source
 Applications, with Helm chart and directory sources. It was called
-argocd-hydrate until v0.4.0.
+argocd-hydrate through the 0.4 releases.
 
-## One command
+## Usage
 
 ```bash
 argocd-diff --base base-checkout --head head-checkout \
@@ -18,11 +18,12 @@ argocd-diff --base base-checkout --head head-checkout \
   --output diff.html --summary diff.md
 ```
 
-`--applications` names the file of ArgoCD Application resources inside each
-checkout. Source paths in those Applications (`path:`, `$values/…`) are
-resolved against the checkout they belong to. Both sides are rendered, then
-diffed; the rendered trees go to `--rendered` as `base/` and `head/`, where
-other tools such as kubeconform can scan them, or to a temporary directory.
+One command does the whole job. `--applications` names the file of ArgoCD
+Application resources inside each checkout; source paths in those
+Applications (`path:`, `$values/…`) are resolved against the checkout they
+belong to. Both sides are rendered, then diffed. The rendered trees go to
+`--rendered`, replacing its `base/` and `head/`, where other tools such as
+kubeconform can scan them, or to a temporary directory.
 Charts are pulled once into `--charts-dir` and reused on later runs, so cache
 that directory in CI.
 
@@ -30,9 +31,10 @@ that directory in CI.
 $ argocd-diff --help
 Compare two trees of rendered manifests, as "argocd-diff hydrate" writes
 them, and write a self-contained HTML report of what changed. Each input is a
-directory or a zip archive of one. With --applications, each input is instead
-a checkout of the GitOps repository holding that Application file, and both
-are hydrated first, so one command does the whole job.
+directory or a zip archive of one. With --applications, each input is a
+checkout of the GitOps repository (a directory or zip of one) holding that
+Application file, and both are hydrated first, so one command does the whole
+job.
 
 Pull request details are optional. Inside GitHub Actions the repository, base
 and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,
@@ -62,7 +64,7 @@ Available Commands:
   hydrate     Render ArgoCD applications into Kubernetes manifests
 
 Flags:
-      --applications string        Hydrate first: the ArgoCD Application file inside each tree, which is then a checkout of the repository rather than rendered manifests
+      --applications string        Path, inside each tree, of the ArgoCD Application file; each tree is then a checkout of the repository, hydrated before diffing, rather than rendered manifests
       --author string              Pull request author
       --base string                Base manifest tree: a directory or a .zip (required)
       --base-applications string   ArgoCD Application resources of the base tree, for project and cluster labels (default: applications.yaml in the base tree, if present)
@@ -79,7 +81,7 @@ Flags:
       --pr-number int              Pull request number
       --pr-title string            Pull request title
       --pr-url string              Pull request URL (default: derived from --repo and --pr-number on github.com)
-      --rendered string            With --applications, keep the rendered trees in this directory as base/ and head/ (default: a temporary directory)
+      --rendered string            With --applications, keep the rendered trees in this directory, replacing its base/ and head/ (default: a temporary directory)
       --repo string                Repository as owner/name
       --summary string             Also write a Markdown summary, for a pull request comment, to this file
       --title string               Report title (default: the pull request, or the input paths)
@@ -106,9 +108,10 @@ context can be expanded in the viewer (default 2000 lines).
 Each file is labelled with the ArgoCD Application it was rendered for (the
 first path segment, which is the Application's `metadata.name`) and with that
 Application's `spec.project` and `spec.destination.name`. With
-`--applications` those come from the Applications just rendered. When diffing
-trees rendered earlier, they come from `applications.yaml` at the root of each
-tree when it exists, or from the files given with `--base-applications` and
+`--applications` those come from the Applications just rendered, and
+`--base-applications`/`--head-applications` are refused. When diffing trees
+rendered earlier, they come from `applications.yaml` at the root of each tree
+when it exists, or from the files given with `--base-applications` and
 `--head-applications`; without them, files still group by Application and
 only the project and cluster labels stay empty.
 
@@ -158,8 +161,8 @@ an error is reported once and exits with status 1.
 
 ## GitHub Action
 
-This repository is also a GitHub Action that installs the release it is used
-at:
+This repository is also a GitHub Action; it installs the release whose tag it
+is used with:
 
 ```yaml
 - uses: kazysgurskas/argocd-diff@v1.0.0

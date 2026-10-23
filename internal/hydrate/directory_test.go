@@ -104,6 +104,6 @@ func TestRenderDirectoryResolvesAgainstRoot(t *testing.T) {
 		t.Errorf("got %q", out)
 	}
 	if _, err := renderDirectory(source, Options{}); err == nil {
-		t.Error("the path must not resolve against the working directory when a root is meant")
+		t.Error("with no Root the path is relative to the working directory, where apps/web does not exist")
 	}
 }

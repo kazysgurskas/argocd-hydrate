@@ -20,9 +20,10 @@ func New() *cobra.Command {
 		Short: "Diff rendered ArgoCD application manifests",
 		Long: `Compare two trees of rendered manifests, as "argocd-diff hydrate" writes
 them, and write a self-contained HTML report of what changed. Each input is a
-directory or a zip archive of one. With --applications, each input is instead
-a checkout of the GitOps repository holding that Application file, and both
-are hydrated first, so one command does the whole job.
+directory or a zip archive of one. With --applications, each input is a
+checkout of the GitOps repository (a directory or zip of one) holding that
+Application file, and both are hydrated first, so one command does the whole
+job.
 
 Pull request details are optional. Inside GitHub Actions the repository, base
 and head refs come from GITHUB_REPOSITORY, GITHUB_BASE_REF and GITHUB_HEAD_REF,

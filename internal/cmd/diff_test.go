@@ -137,6 +137,9 @@ func TestRootHydratesAndDiffsCheckouts(t *testing.T) {
 	}
 	rendered := filepath.Join(dir, "rendered")
 	html, summary := filepath.Join(dir, "diff.html"), filepath.Join(dir, "diff.md")
+	// Left by an earlier run; must not reach the diff.
+	stale := filepath.Join(rendered, "head", "gone.stage.c1", "Kind", "x.yaml")
+	writeFile(t, stale, "kind: Kind\nmetadata:\n  name: x\n")
 
 	root := New()
 	root.SetOut(io.Discard)
@@ -144,6 +147,9 @@ func TestRootHydratesAndDiffsCheckouts(t *testing.T) {
 		"--applications", "manifests/applications.yaml", "--rendered", rendered, "--output", html, "--summary", summary})
 	if err := root.Execute(); err != nil {
 		t.Fatal(err)
+	}
+	if _, err := os.Stat(stale); !os.IsNotExist(err) {
+		t.Error("a stale file under --rendered survived")
 	}
 	md, err := os.ReadFile(summary)
 	if err != nil {
@@ -163,5 +169,15 @@ func TestRootHydratesAndDiffsCheckouts(t *testing.T) {
 	}
 	if _, err := os.Stat(html); err != nil {
 		t.Error(err)
+	}
+}
+
+func TestRootRefusesPerTreeApplicationsWhenHydrating(t *testing.T) {
+	root := New()
+	root.SetOut(io.Discard)
+	root.SetArgs([]string{"--base", t.TempDir(), "--head", t.TempDir(),
+		"--applications", "manifests/applications.yaml", "--head-applications", "x.yaml"})
+	if err := root.Execute(); err == nil || !strings.Contains(err.Error(), "head-applications") {
+		t.Errorf("want a mutually exclusive flags error, got %v", err)
 	}
 }

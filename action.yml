@@ -8,9 +8,11 @@ branding:
 inputs:
   version:
     description: >-
-      Release to install, such as v1.0.0. Defaults to the ref this action is
-      used at, so `uses: kazysgurskas/argocd-diff@v1.0.0` installs v1.0.0.
-      Pinning the action by commit SHA requires this input.
+      Release to install, such as v1.0.0 (v1.0.0 and later; earlier releases
+      were published as argocd-hydrate). Defaults to the tag this action is
+      used with, so `uses: kazysgurskas/argocd-diff@v1.0.0` installs v1.0.0.
+      Pinning the action by commit SHA requires this input. Major tags such
+      as v1 are not published.
     required: false
     default: ''
 
@@ -34,8 +36,11 @@ runs:
         set -euo pipefail
         version=${VERSION:-$ACTION_REF}
         case "$version" in
-          v[0-9]*) ;;
-          *) echo "::error::argocd-diff: set 'version: vX.Y.Z'; the action is used at '$version', which is not a release tag"; exit 1 ;;
+          v[0-9]*.[0-9]*.[0-9]*) ;;
+          *) echo "::error::argocd-diff: set 'version: vX.Y.Z'; the action is used with '$version', which is not a release tag (major tags such as v1 are not published)"; exit 1 ;;
+        esac
+        case "$version" in
+          v0.*) echo "::error::argocd-diff: releases before v1.0.0 were published as argocd-hydrate and cannot be installed by this action"; exit 1 ;;
         esac
         case "$RUNNER_OS" in
           Linux) os=linux ;;
