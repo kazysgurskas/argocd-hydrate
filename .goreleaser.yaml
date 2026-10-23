@@ -27,7 +27,6 @@ dockers:
     goarch: amd64
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-amd64"
-      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:latest"
     dockerfile: Dockerfile
   - id: argocd-diff-arm64
     use: buildx
@@ -40,6 +39,16 @@ dockers:
     image_templates:
       - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-arm64"
     dockerfile: Dockerfile
+
+docker_manifests:
+  - name_template: "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-arm64"
+  - name_template: "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:latest"
+    image_templates:
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-amd64"
+      - "ghcr.io/{{ .Env.GITHUB_REPOSITORY_OWNER }}/argocd-diff:{{ .Env.VERSION }}-arm64"
 
 archives:
    - format: tar.gz
